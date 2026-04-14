@@ -1,16 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { useDepartments } from "../hooks/useDepartments";
-import { createUserWithEmailAndPassword } from "firebase/auth";
-import {
-  doc,
-  setDoc,
-  getDocs,
-  query,
-  collection,
-  where,
-} from "firebase/firestore";
-import { auth, db } from "../../firebase"; // Make sure db is exported from here
 
 export default function Register({ onSwitchToLogin, onRegisterSuccess }) {
   const { departmentsMap, loading: loadingDepts } = useDepartments();
@@ -43,69 +33,14 @@ export default function Register({ onSwitchToLogin, onRegisterSuccess }) {
     setError("");
     setLoading(true);
 
-    try {
-      // 1. If registering as a manager, check Firestore if one already exists for this department
-      if (formData.role === "dept_manager" || formData.role === "manager") {
-        const managersQuery = query(
-          collection(db, "users"),
-          where("department", "==", formData.department),
-          where("role", "in", ["dept_manager", "manager"])
-        );
-        const querySnapshot = await getDocs(managersQuery);
-
-        if (!querySnapshot.empty) {
-          setError(
-            `A manager already exists (or is pending) for ${
-              departmentsMap[formData.department]?.name || "this department"
-            }.`
-          );
-          setLoading(false);
-          return;
-        }
-      }
-
-      // 2. Create the user in Firebase Auth
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        formData.email,
-        formData.password
-      );
-      const user = userCredential.user;
-
-      // 3. Save their extra details to Firestore
-      await setDoc(doc(db, "users", user.uid), {
-        uid: user.uid,
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        email: formData.email,
-        phone: formData.phone,
-        department: formData.department,
-        role: formData.role,
-        // Managers require approval, employees are auto-approved (adjust to your preference)
-        status: "pending",
-        createdAt: new Date().toISOString(),
-        clockedIn: false,
-      });
-
-      // 4. Success! Redirect to login or auto-login
+    setTimeout(() => {
+      setLoading(false);
       if (onRegisterSuccess) {
         onRegisterSuccess();
       } else {
         onSwitchToLogin(); // Fallback if you just want to swap the screen
       }
-    } catch (error) {
-      console.error(error);
-      // Format Firebase errors nicely
-      if (error.code === "auth/email-already-in-use") {
-        setError("This email is already registered.");
-      } else if (error.code === "auth/weak-password") {
-        setError("Password should be at least 6 characters.");
-      } else {
-        setError(error.message);
-      }
-    } finally {
-      setLoading(false);
-    }
+    }, 1000);
   };
 
   return (

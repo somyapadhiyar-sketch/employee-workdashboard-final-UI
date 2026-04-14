@@ -12,10 +12,6 @@ import ProfilePage from "./ProfilePage";
 import ActivityReport from "../components/ActivityReport";
 import MyPerformance from "./MyPerformance";
 
-// NEW FIREBASE IMPORTS
-import { collection, getDocs, addDoc, doc, updateDoc, getDoc, deleteDoc } from "firebase/firestore";
-import { db } from "../../firebase";
-
 export default function EmployeeDashboard() {
   const { auth, onLogout } = useOutletContext();
   const navigate = useNavigate();
@@ -81,58 +77,12 @@ export default function EmployeeDashboard() {
   // 1. Fetch data from Firestore
   const fetchDashboardData = async () => {
     setLoadingData(true);
-    try {
-      const uId = auth?.currentUser?.uid || auth?.currentUser?.id;
-      if (uId) {
-        const userSnap = await getDoc(doc(db, "users", uId));
-        if (userSnap.exists()) {
-          const userData = userSnap.data();
-          const todayStr = getISTDate();
-
-          // Use Firebase clockedIn field if available, otherwise fallback to date calculation
-          if (userData.clockedIn !== undefined) {
-            setClockedIn(userData.clockedIn);
-          } else if (userData.lastClockInDate === todayStr && userData.lastClockOutDate !== todayStr) {
-            setClockedIn(true);
-          }
-          if (userData.isOnBreak !== undefined) {
-            setIsOnBreak(userData.isOnBreak);
-          }
-        }
-      }
-
-      const logsSnap = await getDocs(collection(db, "workLogs"));
-      setAllWorkLogs(
-        logsSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
-      );
-
-      const leaveSnap = await getDocs(collection(db, "leaveRequests"));
-      setAllLeaveRequests(
-        leaveSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
-      );
-
-      const holidaysSnap = await getDocs(collection(db, "publicHolidays"));
-      if (!holidaysSnap.empty) {
-        const seen = new Set();
-        const uniqueHols = [];
-        for (const docItem of holidaysSnap.docs) {
-          const data = docItem.data();
-          if (seen.has(data.date)) {
-            deleteDoc(doc(db, "publicHolidays", docItem.id));
-          } else {
-            seen.add(data.date);
-            uniqueHols.push({ id: docItem.id, ...data });
-          }
-        }
-        uniqueHols.sort((a, b) => new Date(a.date) - new Date(b.date));
-        setPublicHolidays(uniqueHols);
-      }
-    } catch (error) {
-      console.error("Error fetching dashboard data:", error);
-      showToastMessage("Failed to load database records.", "error");
-    } finally {
+    setTimeout(() => {
+      setAllWorkLogs([]);
+      setAllLeaveRequests([]);
+      setPublicHolidays([]);
       setLoadingData(false);
-    }
+    }, 500);
   };
 
   useEffect(() => {
@@ -280,51 +230,19 @@ export default function EmployeeDashboard() {
   const handleClockIn = async () => {
     setClockedIn(true);
     setClockInTime(formatTime(currentTime));
-    try {
-      const todayDate = getISTDate();
-      await updateDoc(doc(db, "users", currentUserId), {
-        clockedIn: true,
-        lastClockInDate: todayDate,
-        lastClockInTime: getISTTimeString(),
-      });
-      showToastMessage("Clocked in successfully!", "success");
-    } catch (err) {
-      console.error(err);
-      showToastMessage("Failed to clock in to database.", "error");
-    }
+    showToastMessage("Clocked in successfully!", "success");
   };
 
   const handleClockOut = async () => {
     setClockedIn(false);
     setIsOnBreak(false); // Auto-reset break on clock out
-    try {
-      const todayDate = getISTDate();
-      await updateDoc(doc(db, "users", currentUserId), {
-        clockedIn: false,
-        isOnBreak: false,
-        lastClockOutDate: todayDate,
-        lastClockOutTime: getISTTimeString()
-      });
-      showToastMessage("Clocked out successfully!", "success");
-    } catch (err) {
-      console.error(err);
-      showToastMessage("Failed to clock out to database.", "error");
-    }
+    showToastMessage("Clocked out successfully!", "success");
   };
 
   const handleToggleBreak = async () => {
     const newBreakStatus = !isOnBreak;
     setIsOnBreak(newBreakStatus);
-    try {
-      await updateDoc(doc(db, "users", currentUserId), {
-        isOnBreak: newBreakStatus
-      });
-      showToastMessage(newBreakStatus ? "Break started. Tracking paused." : "Resumed work. Tracking active.", "info");
-    } catch (err) {
-      console.error(err);
-      setIsOnBreak(!newBreakStatus); // Fallback
-      showToastMessage("Failed to update break status.", "error");
-    }
+    showToastMessage(newBreakStatus ? "Break started. Tracking paused." : "Resumed work. Tracking active.", "info");
   };
 
   // --- FIREBASE ACTIONS ---
@@ -343,29 +261,11 @@ export default function EmployeeDashboard() {
         "error"
       );
 
-    try {
-      await addDoc(collection(db, "leaveRequests"), {
-        employeeId: currentUserId,
-        employeeName: `${user.firstName} ${user.lastName}`,
-        department: user.department,
-        startDate: leaveStartDate,
-        endDate: leaveDuration === "half" ? leaveStartDate : leaveEndDate,
-        reason: leaveReason,
-        leaveType: leaveType,
-        leaveDuration: leaveDuration,
-        status: "pending",
-        isManager: false,
-        role: user.role,
-        appliedAt: new Date().toISOString(),
-      });
-      showToastMessage("Leave request submitted!", "success");
-      setLeaveStartDate("");
-      setLeaveEndDate("");
-      setLeaveReason("");
-      fetchDashboardData();
-    } catch (err) {
-      showToastMessage("Failed to submit leave.", "error");
-    }
+    showToastMessage("Leave request submitted!", "success");
+    setLeaveStartDate("");
+    setLeaveEndDate("");
+    setLeaveReason("");
+    fetchDashboardData();
   };
 
   const handleWorkLog = async (e) => {
@@ -376,41 +276,18 @@ export default function EmployeeDashboard() {
     const [hours, mins] = calculatedDuration.split(":").map(Number);
     const totalHours = hours + mins / 60;
 
-    try {
-      const dataToSave = {
-        employeeId: currentUserId,
-        employeeName: `${user.firstName} ${user.lastName}`,
-        department: user.department,
-        workType: workType,
-        description: description,
-        hours: totalHours,
-        minutes: hours * 60 + mins,
-        taskStartTime,
-        taskEndTime,
-        duration: calculatedDuration,
-        date: getISTDate(),
-        clockInTime,
-        createdAt: getISTTimeString(),
-      };
-
-      if (editingLogId) {
-        const { createdAt, ...updateData } = dataToSave;
-        await updateDoc(doc(db, "workLogs", editingLogId), { ...updateData, isEdited: true });
-        showToastMessage("Work entry updated!", "success");
-        setEditingLogId(null);
-      } else {
-        await addDoc(collection(db, "workLogs"), dataToSave);
-        showToastMessage("Work entry saved!", "success");
-      }
-
-      setDescription("");
-      setTaskStartTime("");
-      setTaskEndTime("");
-      setCalculatedDuration("");
-      fetchDashboardData();
-    } catch (err) {
-      showToastMessage("Failed to save work.", "error");
+    if (editingLogId) {
+      showToastMessage("Work entry updated!", "success");
+      setEditingLogId(null);
+    } else {
+      showToastMessage("Work entry saved!", "success");
     }
+
+    setDescription("");
+    setTaskStartTime("");
+    setTaskEndTime("");
+    setCalculatedDuration("");
+    fetchDashboardData();
   };
 
   const handleEditLog = (log) => {
@@ -426,13 +303,8 @@ export default function EmployeeDashboard() {
 
   const handleDeleteLog = async (logId) => {
     if (window.confirm("Are you sure you want to delete this work entry?")) {
-      try {
-        await deleteDoc(doc(db, "workLogs", logId));
-        showToastMessage("Work entry deleted!", "success");
-        fetchDashboardData();
-      } catch (err) {
-        showToastMessage("Failed to delete entry.", "error");
-      }
+      showToastMessage("Work entry deleted!", "success");
+      fetchDashboardData();
     }
   };
 

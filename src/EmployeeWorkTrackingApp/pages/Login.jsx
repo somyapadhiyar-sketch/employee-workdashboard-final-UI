@@ -1,12 +1,8 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { signInWithEmailAndPassword, signOut, sendPasswordResetEmail, signInWithPopup, getAdditionalUserInfo, deleteUser } from "firebase/auth";
-import { doc, getDoc, setDoc } from "firebase/firestore";
-import { auth, db, googleProvider } from "../../firebase"; // Make sure db is exported from here
 import { useAuth } from "../hooks/AuthContext";
 
 export default function Login({ onLoginSuccess, onSwitchToRegister }) {
-  const { refreshUser } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -22,105 +18,34 @@ export default function Login({ onLoginSuccess, onSwitchToRegister }) {
     }
     setError("");
     setResetSent(false);
-    try {
-      setLoading(true);
-      await sendPasswordResetEmail(auth, email);
+    setLoading(true);
+    
+    setTimeout(() => {
       setResetSent(true);
-      setError("");
-    } catch (err) {
-      console.error(err);
-      if (err.code === 'auth/user-not-found') {
-        setError("No account found with this email address.");
-      } else {
-        setError("Failed to send reset email. Please try again.");
-      }
-    } finally {
       setLoading(false);
-    }
-  };
-
-  const verifyAndLogin = async (user) => {
-    const uid = user.uid;
-    const userDocRef = doc(db, "users", uid);
-    let userDoc = await getDoc(userDocRef);
-
-    if (!userDoc.exists()) {
-      await signOut(auth);
-      setError("User profile not found in database. Please register first.");
-      return null;
-    }
-
-    const userData = userDoc.data();
-
-    // Verify Role and Status
-    const isEmployeeMatch = role === "employee" && userData.role === "employee";
-    const isManagerMatch =
-      role === "dept_manager" && (userData.role === "dept_manager" || userData.role === "manager");
-    const isAdminMatch = role === "admin" && userData.role === "admin";
-
-    if (!isEmployeeMatch && !isManagerMatch && !isAdminMatch) {
-      await signOut(auth);
-      setError(
-        `You are not authorized to log in as a ${
-          role === "dept_manager" ? "manager" : role
-        }. Please select the correct login role.`
-      );
-      return null;
-    }
-
-    if (userData.status === "pending") {
-      await signOut(auth);
-      setError("Your account is pending admin approval.");
-      return null;
-    }
-
-    return userData;
+    }, 1000);
   };
 
   const handleGoogleLogin = async () => {
     setError("");
     setLoading(true);
-    try {
-      const result = await signInWithPopup(auth, googleProvider);
-      const { isNewUser } = getAdditionalUserInfo(result);
-      
-      // Check if profile exists before keeping the Auth record
-      const userDocRef = doc(db, "users", result.user.uid);
-      const userDoc = await getDoc(userDocRef);
-
-      if (!userDoc.exists()) {
-        // If it's a new sign-in, delete the unwanted auth record
-        if (isNewUser) {
-          try {
-            await deleteUser(result.user);
-          } catch (delError) {
-            console.error("Cleanup error:", delError);
-          }
-        }
-        await signOut(auth);
-        setError("User profile not found in database. Please register first.");
-        setLoading(false);
-        return;
+    
+    setTimeout(() => {
+      const mockUser = {
+        id: "mock-id-123",
+        uid: "mock-id-123",
+        email: email || "demo@example.com",
+        role: role,
+        firstName: "Demo",
+        lastName: "User",
+        department: "it_engineering",
+        status: "approved"
+      };
+      if (onLoginSuccess) {
+        onLoginSuccess(mockUser);
       }
-
-      const userData = await verifyAndLogin(result.user);
-      if (userData && onLoginSuccess) {
-        onLoginSuccess(userData);
-      }
-    } catch (err) {
-      console.error(err);
-      if (err.code === "auth/popup-closed-by-user") {
-        setError("Sign-in popup was closed before completion.");
-      } else if (err.code === "auth/operation-not-allowed") {
-        setError("Google login is not enabled in Firebase Console. Please enable it.");
-      } else if (err.code === "auth/popup-blocked") {
-        setError("SignIn popup was blocked by your browser. Please enable popups.");
-      } else {
-        setError(`Google Sign-In failed: ${err.message || "Please try again."}`);
-      }
-    } finally {
       setLoading(false);
-    }
+    }, 1000);
   };
 
   const handleSubmit = async (e) => {
@@ -128,18 +53,22 @@ export default function Login({ onLoginSuccess, onSwitchToRegister }) {
     setError("");
     setLoading(true);
 
-    try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const userData = await verifyAndLogin(userCredential.user);
-      if (userData && onLoginSuccess) {
-        onLoginSuccess(userData);
+    setTimeout(() => {
+      const mockUser = {
+        id: "mock-id-123",
+        uid: "mock-id-123",
+        email: email,
+        role: role,
+        firstName: "Demo",
+        lastName: "User",
+        department: "it_engineering",
+        status: "approved"
+      };
+      if (onLoginSuccess) {
+        onLoginSuccess(mockUser);
       }
-    } catch (error) {
-      console.error(error);
-      setError("Invalid email or password.");
-    } finally {
       setLoading(false);
-    }
+    }, 1000);
   };
 
   return (

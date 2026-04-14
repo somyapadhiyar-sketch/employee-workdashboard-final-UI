@@ -16,9 +16,6 @@ import {
   Eye,
   EyeOff,
 } from "lucide-react";
-import { doc, setDoc } from "firebase/firestore";
-import { updatePassword, reauthenticateWithCredential, EmailAuthProvider } from "firebase/auth";
-import { auth as fbAuth, db } from "../../firebase";
 
 export default function ProfilePage() {
   const contextAuth = useOutletContext()?.auth;
@@ -109,19 +106,9 @@ export default function ProfilePage() {
 
           if (user?.id || user?.uid) {
             try {
-              const userId = String(user.uid || user.id);
-              await setDoc(
-                doc(db, "users", userId),
-                { profileImage: compressedDataUrl },
-                { merge: true }
-              );
-              try {
-                auth.updateUser({ ...user, profileImage: compressedDataUrl });
-              } catch (e) {
-                console.warn("Ignored local quota error:", e);
-              }
-            } catch (fbError) {
-              console.warn("Firebase update failed:", fbError);
+              auth.updateUser({ ...user, profileImage: compressedDataUrl });
+            } catch (e) {
+              console.warn("Ignored local quota error:", e);
             }
           }
           setMessage({ text: "profile Added succesfully", type: "success" });
@@ -156,26 +143,9 @@ export default function ProfilePage() {
     setFormData((prev) => ({ ...prev, profileImage: "" }));
 
     try {
-      // 1. Update Firebase
-      if (user?.id || user?.uid) {
-        try {
-          const userId = String(user.uid || user.id);
-          await setDoc(
-            doc(db, "users", userId),
-            { profileImage: "" },
-            { merge: true }
-          );
-          console.log("✅ Firebase update successful!");
-        } catch (fbError) {
-          console.warn("❌ Firebase remove image failed:", fbError);
-          throw fbError; // Throw error to trigger the main catch block if DB fails
-        }
-      }
-
       // 2. Update Local Context
       console.log("🔄 Attempting to update local auth state...");
       if (auth && typeof auth.updateUser === "function") {
-        // If your updateUser function is asynchronous, you might need to add 'await' here
         auth.updateUser({ ...user, profileImage: "" });
         console.log("✅ Local auth state updated!");
       } else {
@@ -229,25 +199,6 @@ export default function ProfilePage() {
     e.preventDefault();
     setSaving(true);
     try {
-      if (user?.id || user?.uid) {
-        try {
-          const userId = String(user.uid || user.id);
-          await setDoc(
-            doc(db, "users", userId),
-            {
-              firstName: formData.firstName,
-              lastName: formData.lastName,
-              email: formData.email,
-              contactNo: formData.contactNo || "",
-              profileImage: formData.profileImage || "",
-            },
-            { merge: true }
-          );
-        } catch (fbError) {
-          console.warn("Firebase update failed:", fbError);
-        }
-      }
-
       try {
         auth.updateUser({ ...user, ...formData });
       } catch (e) {
@@ -279,16 +230,6 @@ export default function ProfilePage() {
     }
     setSaving(true);
     try {
-      const fbUser = fbAuth.currentUser;
-      if (!fbUser) throw new Error("No authenticated user found.");
-
-      // 1. Re-authenticate the user first (required for security-sensitive operations like password change)
-      const credential = EmailAuthProvider.credential(fbUser.email, passwordData.currentPassword);
-      await reauthenticateWithCredential(fbUser, credential);
-
-      // 2. Update the password in Firebase Auth
-      await updatePassword(fbUser, passwordData.newPassword);
-
       // 3. Update local state and context (though context will mostly update via onAuthStateChanged)
       const updatedUser = { ...user, password: passwordData.newPassword };
       localStorage.setItem("currentUser", JSON.stringify(updatedUser));
@@ -305,13 +246,7 @@ export default function ProfilePage() {
       setShowPasswordSection(false);
     } catch (error) {
       console.error(error);
-      if (error.code === 'auth/wrong-password') {
-        setMessage({ text: "Current password is incorrect.", type: "error" });
-      } else if (error.code === 'auth/requires-recent-login') {
-        setMessage({ text: "Please log out and log in again to change password.", type: "error" });
-      } else {
-        setMessage({ text: error.message || "Failed to update password.", type: "error" });
-      }
+      setMessage({ text: error.message || "Failed to update password.", type: "error" });
     } finally {
       setSaving(false);
     }

@@ -14,18 +14,6 @@ import ManagerActivityReport from "../components/ManagerActivityReport";
 import TeamDynamics from "../components/TeamDynamics";
 import MyPerformance from "./MyPerformance";
 
-
-import {
-  collection,
-  getDocs,
-  doc,
-  updateDoc,
-  deleteDoc,
-  addDoc,
-  getDoc,
-} from "firebase/firestore";
-import { db } from "../../firebase";
-
 export default function ManagerDashboard() {
   const { auth, onLogout } = useOutletContext();
   const { isDark, toggleTheme } = useTheme();
@@ -79,64 +67,13 @@ export default function ManagerDashboard() {
 
   const fetchDashboardData = async () => {
     setLoadingData(true);
-    try {
-      const uId = auth?.currentUser?.uid || auth?.currentUser?.id;
-      if (uId) {
-        const userSnap = await getDoc(doc(db, "users", uId));
-        if (userSnap.exists()) {
-          const userData = userSnap.data();
-          const todayStr = getISTDate();
-
-          // Use Firebase clockedIn field if available, otherwise fallback to date calculation
-          if (userData.clockedIn !== undefined) {
-            setClockedIn(userData.clockedIn);
-          } else if (
-            userData.lastClockInDate === todayStr &&
-            userData.lastClockOutDate !== todayStr
-          ) {
-            setClockedIn(true);
-          }
-          if (userData.isOnBreak !== undefined) {
-            setIsOnBreak(userData.isOnBreak);
-          }
-        }
-      }
-
-      const usersSnap = await getDocs(collection(db, "users"));
-      setAllUsers(usersSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
-
-      const logsSnap = await getDocs(collection(db, "workLogs"));
-      setAllWorkLogs(
-        logsSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
-      );
-
-      const leaveSnap = await getDocs(collection(db, "leaveRequests"));
-      setAllLeaveRequests(
-        leaveSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
-      );
-
-      const holidaysSnap = await getDocs(collection(db, "publicHolidays"));
-      if (!holidaysSnap.empty) {
-        const seen = new Set();
-        const uniqueHols = [];
-        for (const docItem of holidaysSnap.docs) {
-          const data = docItem.data();
-          if (seen.has(data.date)) {
-            deleteDoc(doc(db, "publicHolidays", docItem.id));
-          } else {
-            seen.add(data.date);
-            uniqueHols.push({ id: docItem.id, ...data });
-          }
-        }
-        uniqueHols.sort((a, b) => new Date(a.date) - new Date(b.date));
-        setPublicHolidays(uniqueHols);
-      }
-    } catch (error) {
-      console.error("Error fetching dashboard data:", error);
-      showToastMessage("Failed to load some database records.", "error");
-    } finally {
+    setTimeout(() => {
+      setAllUsers([]);
+      setAllWorkLogs([]);
+      setAllLeaveRequests([]);
+      setPublicHolidays([]);
       setLoadingData(false);
-    }
+    }, 500);
   };
 
   useEffect(() => {
@@ -384,24 +321,14 @@ export default function ManagerDashboard() {
       );
 
   const handleApproveUser = async (employeeId) => {
-    try {
-      await updateDoc(doc(db, "users", employeeId), { status: "approved" });
-      showToastMessage("Employee approved successfully!", "success");
-      fetchDashboardData();
-    } catch (err) {
-      showToastMessage("Failed to approve.", "error");
-    }
+    showToastMessage("Employee approved successfully!", "success");
+    fetchDashboardData();
   };
 
   const handleRejectUser = async (employeeId) => {
     if (window.confirm("Are you sure you want to reject this registration?")) {
-      try {
-        await deleteDoc(doc(db, "users", employeeId));
-        showToastMessage("Registration rejected.", "success");
-        fetchDashboardData();
-      } catch (err) {
-        showToastMessage("Failed to reject.", "error");
-      }
+      showToastMessage("Registration rejected.", "success");
+      fetchDashboardData();
     }
   };
 
@@ -411,13 +338,8 @@ export default function ManagerDashboard() {
         `Are you sure you want to remove ${employeeName}? This action cannot be undone.`
       )
     ) {
-      try {
-        await deleteDoc(doc(db, "users", employeeId));
-        showToastMessage(`${employeeName} removed successfully.`, "success");
-        fetchDashboardData();
-      } catch (err) {
-        showToastMessage("Failed to remove employee.", "error");
-      }
+      showToastMessage(`${employeeName} removed successfully.`, "success");
+      fetchDashboardData();
     }
   };
 
@@ -440,53 +362,21 @@ export default function ManagerDashboard() {
     const lDuration = lType === "sick" ? "full" : leaveDuration;
     const lEndDate = lDuration === "half" ? leaveStartDate : leaveEndDate;
 
-    try {
-      await addDoc(collection(db, "leaveRequests"), {
-        employeeId: user.id,
-        employeeName: userName,
-        department: dept,
-        startDate: leaveStartDate,
-        endDate: lEndDate,
-        reason: leaveReason,
-        leaveType: lType,
-        leaveDuration: lDuration,
-        status: "pending",
-        isManager: true,
-        role: user.role,
-        appliedAt: new Date().toISOString(),
-      });
-      showToastMessage("Leave request submitted!", "success");
-      setLeaveStartDate("");
-      setLeaveEndDate("");
-      setLeaveReason("");
-      fetchDashboardData();
-    } catch (err) {
-      showToastMessage("Failed to submit leave.", "error");
-    }
+    showToastMessage("Leave request submitted!", "success");
+    setLeaveStartDate("");
+    setLeaveEndDate("");
+    setLeaveReason("");
+    fetchDashboardData();
   };
 
   const handleApproveLeave = async (requestId) => {
-    try {
-      await updateDoc(doc(db, "leaveRequests", requestId), {
-        status: "approved",
-      });
-      showToastMessage("Leave request approved!", "success");
-      fetchDashboardData();
-    } catch (err) {
-      showToastMessage("Error approving leave.", "error");
-    }
+    showToastMessage("Leave request approved!", "success");
+    fetchDashboardData();
   };
 
   const handleRejectLeave = async (requestId) => {
-    try {
-      await updateDoc(doc(db, "leaveRequests", requestId), {
-        status: "rejected",
-      });
-      showToastMessage("Leave request rejected!", "success");
-      fetchDashboardData();
-    } catch (err) {
-      showToastMessage("Error rejecting leave.", "error");
-    }
+    showToastMessage("Leave request rejected!", "success");
+    fetchDashboardData();
   };
 
   const handleWorkLog = async (e) => {
@@ -497,43 +387,20 @@ export default function ManagerDashboard() {
     const [hours, mins] = calculatedDuration.split(":").map(Number);
     const totalHours = hours + mins / 60;
 
-    try {
-      const dataToSave = {
-        employeeId: editingLogOwner || currentUserId,
-        employeeName: editingLogName || userName,
-        department: dept,
-        workType: workType,
-        description: description,
-        hours: totalHours,
-        minutes: hours * 60 + mins,
-        taskStartTime,
-        taskEndTime,
-        duration: calculatedDuration,
-        date: getISTDate(),
-        clockInTime: clockInTime ? (clockInTime instanceof Date ? clockInTime.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : clockInTime) : null,
-        createdAt: getISTTimeString(),
-      };
-
-      if (editingLogId) {
-        const { createdAt, ...updateData } = dataToSave;
-        await updateDoc(doc(db, "workLogs", editingLogId), { ...updateData, isEdited: true });
-        showToastMessage("Work entry updated!", "success");
-        setEditingLogId(null);
-        setEditingLogOwner(null);
-        setEditingLogName(null);
-      } else {
-        await addDoc(collection(db, "workLogs"), dataToSave);
-        showToastMessage("Work entry saved!", "success");
-      }
-
-      setDescription("");
-      setTaskStartTime("");
-      setTaskEndTime("");
-      setCalculatedDuration("");
-      fetchDashboardData();
-    } catch (err) {
-      showToastMessage("Failed to save work.", "error");
+    if (editingLogId) {
+      showToastMessage("Work entry updated!", "success");
+      setEditingLogId(null);
+      setEditingLogOwner(null);
+      setEditingLogName(null);
+    } else {
+      showToastMessage("Work entry saved!", "success");
     }
+
+    setDescription("");
+    setTaskStartTime("");
+    setTaskEndTime("");
+    setCalculatedDuration("");
+    fetchDashboardData();
   };
 
   const handleEditLog = (log) => {
@@ -551,13 +418,8 @@ export default function ManagerDashboard() {
 
   const handleDeleteLog = async (logId) => {
     if (window.confirm("Are you sure you want to delete this work entry?")) {
-      try {
-        await deleteDoc(doc(db, "workLogs", logId));
-        showToastMessage("Work entry deleted!", "success");
-        fetchDashboardData();
-      } catch (err) {
-        showToastMessage("Failed to delete entry.", "error");
-      }
+      showToastMessage("Work entry deleted!", "success");
+      fetchDashboardData();
     }
   };
 
@@ -574,18 +436,7 @@ export default function ManagerDashboard() {
   const handleClockIn = async () => {
     setClockedIn(true);
     setClockInTime(new Date());
-    try {
-      const todayDate = getISTDate();
-      await updateDoc(doc(db, "users", currentUserId), {
-        clockedIn: true,
-        lastClockInDate: todayDate,
-        lastClockInTime: getISTTimeString(),
-      });
-      showToastMessage("Clocked in successfully!", "success");
-    } catch (err) {
-      console.error(err);
-      showToastMessage("Failed to clock in to database.", "error");
-    }
+    showToastMessage("Clocked in successfully!", "success");
   };
 
   const handleClockOut = async () => {
@@ -595,34 +446,13 @@ export default function ManagerDashboard() {
     setTaskEndTime("");
     setCalculatedDuration("");
     setIsOnBreak(false); // Auto-reset break
-    try {
-      const todayDate = getISTDate();
-      await updateDoc(doc(db, "users", currentUserId), {
-        clockedIn: false,
-        isOnBreak: false,
-        lastClockOutDate: todayDate,
-        lastClockOutTime: getISTTimeString(),
-      });
-      showToastMessage("Clocked out successfully!", "success");
-    } catch (err) {
-      console.error(err);
-      showToastMessage("Failed to clock out to database.", "error");
-    }
+    showToastMessage("Clocked out successfully!", "success");
   };
 
   const handleToggleBreak = async () => {
     const newBreakStatus = !isOnBreak;
     setIsOnBreak(newBreakStatus);
-    try {
-      await updateDoc(doc(db, "users", currentUserId), {
-        isOnBreak: newBreakStatus
-      });
-      showToastMessage(newBreakStatus ? "Break started. Tracking paused." : "Resumed work. Tracking active.", "info");
-    } catch (err) {
-      console.error(err);
-      setIsOnBreak(!newBreakStatus); // Fallback
-      showToastMessage("Failed to update break status.", "error");
-    }
+    showToastMessage(newBreakStatus ? "Break started. Tracking paused." : "Resumed work. Tracking active.", "info");
   };
 
   const handleStartTimeChange = (e) => {

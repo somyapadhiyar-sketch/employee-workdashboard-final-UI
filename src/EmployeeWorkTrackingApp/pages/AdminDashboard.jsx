@@ -12,15 +12,6 @@ import OrgOverview from "../components/OrgOverview";
 import MyPerformance from "./MyPerformance";
 import DepartmentPerformance from "../components/DepartmentPerformance";
 
-import {
-  collection,
-  getDocs,
-  doc,
-  updateDoc,
-  deleteDoc,
-  addDoc,
-} from "firebase/firestore";
-import { db } from "../../firebase";
 import { useOutletContext } from "react-router-dom";
 
 const FONT_AWESOME_ICONS = [
@@ -107,67 +98,32 @@ export default function AdminDashboard() {
 
   const fetchDashboardData = async () => {
     setLoadingData(true);
-    try {
-      const usersSnap = await getDocs(collection(db, "users"));
-      setAllUsers(usersSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+    setTimeout(() => {
+      setAllUsers([]);
+      setWorkLogs([]);
+      setLeaveRequests([]);
+      setAnalyticsData([]);
 
-      const logsSnap = await getDocs(collection(db, "workLogs"));
-      setWorkLogs(logsSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+      const currentYear = new Date().getFullYear();
+      const IT_HOLIDAYS = [
+        {
+          date: `${currentYear}-01-14`,
+          name: "Makar Sankranti",
+          type: "Optional",
+        },
+        { date: `${currentYear}-03-04`, name: "Dhuleti", type: "Mandatory" },
+        {
+          date: `${currentYear}-08-28`,
+          name: "Raksha Bandhan",
+          type: "Optional",
+        },
+        { date: `${currentYear}-10-19`, name: "Dussehra", type: "Mandatory" },
+        { date: `${currentYear}-11-09`, name: "New Year", type: "Mandatory" },
+      ];
 
-      const leaveSnap = await getDocs(collection(db, "leaveRequests"));
-      setLeaveRequests(
-        leaveSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
-      );
-
-      const analyticsSnap = await getDocs(collection(db, "employee_analytics"));
-      setAnalyticsData(analyticsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-
-      const holidaysSnap = await getDocs(collection(db, "publicHolidays"));
-      if (holidaysSnap.empty) {
-        // Initialize with default if empty
-        const currentYear = new Date().getFullYear();
-        const IT_HOLIDAYS = [
-          {
-            date: `${currentYear}-01-14`,
-            name: "Makar Sankranti",
-            type: "Optional",
-          },
-          { date: `${currentYear}-03-04`, name: "Dhuleti", type: "Mandatory" },
-          {
-            date: `${currentYear}-08-28`,
-            name: "Raksha Bandhan",
-            type: "Optional",
-          },
-          { date: `${currentYear}-10-19`, name: "Dussehra", type: "Mandatory" },
-          { date: `${currentYear}-11-09`, name: "New Year", type: "Mandatory" },
-        ];
-
-        for (const holiday of IT_HOLIDAYS) {
-          await addDoc(collection(db, "publicHolidays"), holiday);
-        }
-        setPublicHolidays(IT_HOLIDAYS);
-      } else {
-        const seen = new Set();
-        const uniqueHols = [];
-        for (const docItem of holidaysSnap.docs) {
-          const data = docItem.data();
-          if (seen.has(data.date)) {
-            deleteDoc(doc(db, "publicHolidays", docItem.id));
-          } else {
-            seen.add(data.date);
-            uniqueHols.push({ id: docItem.id, ...data });
-          }
-        }
-        uniqueHols.sort((a, b) => new Date(a.date) - new Date(b.date));
-        setPublicHolidays(uniqueHols);
-      }
-    } catch (error) {
-      console.error("Error fetching dashboard data:", error);
-      showToast("Failed to load some database records.", "error");
-    } finally {
-      // Small delay for better UX
-      setTimeout(() => setLoadingData(false), 200);
-    }
+      setPublicHolidays(IT_HOLIDAYS);
+      setLoadingData(false);
+    }, 500);
   };
 
   const user = auth?.currentUser || {};
@@ -289,13 +245,8 @@ export default function AdminDashboard() {
   };
 
   const handleApproveUser = async (employeeId) => {
-    try {
-      await updateDoc(doc(db, "users", employeeId), { status: "approved" });
-      showToast("Account approved successfully!", "success");
-      fetchDashboardData();
-    } catch (err) {
-      showToast("Failed to approve.", "error");
-    }
+    showToast("Account approved successfully!", "success");
+    fetchDashboardData();
   };
 
   const handleRejectUser = async (employeeId) => {
@@ -304,13 +255,8 @@ export default function AdminDashboard() {
         "Are you sure you want to reject and delete this registration?"
       )
     ) {
-      try {
-        await deleteDoc(doc(db, "users", employeeId));
-        showToast("Registration rejected.", "success");
-        fetchDashboardData();
-      } catch (err) {
-        showToast("Failed to reject.", "error");
-      }
+      showToast("Registration rejected.", "success");
+      fetchDashboardData();
     }
   };
 
@@ -320,13 +266,8 @@ export default function AdminDashboard() {
         `Are you sure you want to delete ${employeeName}? This action cannot be undone.`
       )
     ) {
-      try {
-        await deleteDoc(doc(db, "users", employeeId));
-        showToast(`${employeeName} deleted.`, "success");
-        fetchDashboardData();
-      } catch (err) {
-        showToast("Failed to delete.", "error");
-      }
+      showToast(`${employeeName} deleted.`, "success");
+      fetchDashboardData();
     }
   };
 
@@ -410,27 +351,13 @@ export default function AdminDashboard() {
   };
 
   const handleApproveLeave = async (requestId) => {
-    try {
-      await updateDoc(doc(db, "leaveRequests", requestId), {
-        status: "approved",
-      });
-      showToast("Leave request approved!", "success");
-      fetchDashboardData();
-    } catch (err) {
-      showToast("Error approving leave.", "error");
-    }
+    showToast("Leave request approved!", "success");
+    fetchDashboardData();
   };
 
   const handleRejectLeave = async (requestId) => {
-    try {
-      await updateDoc(doc(db, "leaveRequests", requestId), {
-        status: "rejected",
-      });
-      showToast("Leave request rejected!", "success");
-      fetchDashboardData();
-    } catch (err) {
-      showToast("Error rejecting leave.", "error");
-    }
+    showToast("Leave request rejected!", "success");
+    fetchDashboardData();
   };
 
   const getFilteredList = () => {

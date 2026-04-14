@@ -1,6 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { collection, query, where, getDocs } from "firebase/firestore";
-import { db } from "../../firebase";
 
 export default function ActivityReport({ currentUserEmail, isDark }) {
   const [trackingData, setTrackingData] = useState([]);
@@ -28,28 +26,10 @@ export default function ActivityReport({ currentUserEmail, isDark }) {
   useEffect(() => {
     const fetchTrackingData = async () => {
       setLoading(true);
-      try {
-        const q = query(
-          collection(db, "employee_analytics"),
-          where("employee_email", "==", currentUserEmail)
-        );
-
-        const querySnapshot = await getDocs(q);
-        const data = querySnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-
-        const sortedData = data.sort((a, b) =>
-          new Date(b.last_updated || 0) - new Date(a.last_updated || 0)
-        );
-
-        setTrackingData(sortedData);
-      } catch (error) {
-        console.error("Error fetching tracking data: ", error);
-      } finally {
+      setTimeout(() => {
+        setTrackingData([]);
         setLoading(false);
-      }
+      }, 500);
     };
 
     if (currentUserEmail) {

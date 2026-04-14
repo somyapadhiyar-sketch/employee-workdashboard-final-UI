@@ -1,7 +1,4 @@
 import { createContext, useContext, useState, useEffect } from "react";
-import { onAuthStateChanged, signOut } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
-import { auth, db } from "../../firebase"; // Adjust this path if your firebase.js is in a different folder
 
 // 1. Create the Context
 const AuthContext = createContext();
@@ -17,79 +14,49 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // This listener fires automatically whenever the user logs in or out
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        // User is logged into Firebase Auth. Now fetch their extra data from Firestore!
-        try {
-          const userDocRef = doc(db, "users", firebaseUser.uid);
-          const userDoc = await getDoc(userDocRef);
-
-          if (userDoc.exists()) {
-            // Combine Auth UID with Firestore data
-            setCurrentUser({ uid: firebaseUser.uid, ...userDoc.data() });
-          } else {
-            console.error("User document not found in Firestore!");
-            setCurrentUser(null);
-          }
-        } catch (error) {
-          console.error("Error fetching user data:", error);
-          setCurrentUser(null);
-        }
-      } else {
-        // No user is logged in
-        setCurrentUser(null);
+    // On initial load, try to get user from localStorage
+    try {
+      const storedUser = localStorage.getItem("currentUser");
+      if (storedUser) {
+        setCurrentUser(JSON.parse(storedUser));
       }
-
-      // Stop the loading screen once we know the auth state
-      setLoading(false);
-    });
-
-    // Cleanup the listener when the component unmounts
-    return unsubscribe;
+    } catch (error) {
+      console.error("Failed to parse user from localStorage", error);
+      localStorage.removeItem("currentUser");
+    }
+    setLoading(false);
   }, []);
 
+  // Login function
+  const login = (userData) => {
+    localStorage.setItem("currentUser", JSON.stringify(userData));
+    setCurrentUser(userData);
+  };
+
   // Logout function
-  const logout = async () => {
-    try {
-      await signOut(auth);
-    } catch (error) {
-      console.error("Failed to log out", error);
-    }
+  const logout = () => {
+    localStorage.removeItem("currentUser");
+    setCurrentUser(null);
   };
 
   // Update user locally
   const updateUser = (updatedData) => {
-    setCurrentUser(prevUser => ({ ...prevUser, ...updatedData }));
+    const newUser = { ...currentUser, ...updatedData };
+    localStorage.setItem("currentUser", JSON.stringify(newUser));
+    setCurrentUser(newUser);
   };
 
   // The values we want to provide to the rest of the app
   const value = {
     currentUser,
     loading,
+    login,
     logout,
     updateUser,
-    refreshUser: async () => {
-      if (auth.currentUser) {
-        setLoading(true);
-        try {
-          const userDocRef = doc(db, "users", auth.currentUser.uid);
-          const userDoc = await getDoc(userDocRef);
-          if (userDoc.exists()) {
-            setCurrentUser({ uid: auth.currentUser.uid, ...userDoc.data() });
-          }
-        } catch (error) {
-          console.error("Refresh error:", error);
-        } finally {
-          setLoading(false);
-        }
-      }
-    }
   };
 
   return (
     <AuthContext.Provider value={value}>
-      {/* We only render the app once Firebase has checked the initial login state */}
       {!loading && children}
     </AuthContext.Provider>
   );

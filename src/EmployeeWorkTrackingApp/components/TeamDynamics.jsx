@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
-import { collection, getDocs } from "firebase/firestore";
-import { db } from "../../firebase";
 import {
   ResponsiveContainer,
   ScatterChart,
@@ -37,25 +35,12 @@ export default function TeamDynamics({ isDark, dept, deptEmployees = [], hideHea
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
-      try {
-        const [analyticsSnap, logsSnap, leaveSnap] = await Promise.all([
-          getDocs(collection(db, "employee_analytics")),
-          getDocs(collection(db, "workLogs")),
-          getDocs(collection(db, "leaveRequests")),
-        ]);
-
-        const aData = analyticsSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-        const lLogs = logsSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-        const lReqs = leaveSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-
-        setAnalyticsData(aData);
-        setWorkLogs(lLogs);
-        setLeaveRequests(lReqs);
-      } catch (error) {
-        console.error("Error fetching dynamics data:", error);
-      } finally {
+      setTimeout(() => {
+        setAnalyticsData([]);
+        setWorkLogs([]);
+        setLeaveRequests([]);
         setLoading(false);
-      }
+      }, 500);
     };
     fetchData();
   }, []);

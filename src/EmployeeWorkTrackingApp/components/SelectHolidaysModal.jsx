@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { collection, getDocs, doc, deleteDoc, addDoc } from 'firebase/firestore';
-import { db } from '../../firebase';
 import { useTheme } from '../context/ThemeContext';
 
 const AVAILABLE_HOLIDAYS = [
@@ -54,41 +52,11 @@ export default function SelectHolidaysModal({ isOpen, onClose, currentHolidays, 
 
   const handleSave = async () => {
     setIsSaving(true);
-    try {
-      // 1. Get current DB snapshot to know exact IDs to delete
-      const holidaysSnap = await getDocs(collection(db, "publicHolidays"));
-      const dbHolidays = holidaysSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-      // 2. Identify what to delete (in DB but not in selectedHolidays)
-      const toDelete = dbHolidays.filter(docHol => !selectedHolidays.includes(docHol.name));
-
-      for (const docToDel of toDelete) {
-        await deleteDoc(doc(db, "publicHolidays", docToDel.id));
-      }
-
-      // 3. Identify what to add (in selectedHolidays but not in DB)
-      const dbHolidayNames = dbHolidays.map(d => d.name);
-      const toAddNames = selectedHolidays.filter(name => !dbHolidayNames.includes(name));
-
-      const toAddFull = AVAILABLE_HOLIDAYS.filter(ah => toAddNames.includes(ah.name));
-
-      for (const ah of toAddFull) {
-        await addDoc(collection(db, "publicHolidays"), {
-          name: ah.name,
-          date: `${currentYear}-${ah.dateMonth}-${ah.dateDay}`,
-          type: "Optional"
-        });
-      }
-
-      // Call onSuccess
+    setTimeout(() => {
       onSaveSuccess();
       onClose();
-    } catch (error) {
-      console.error("Error saving holidays:", error);
-      alert("Failed to save changes. Please try again.");
-    } finally {
       setIsSaving(false);
-    }
+    }, 500);
   };
 
   if (!isOpen) return null;

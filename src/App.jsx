@@ -48,6 +48,7 @@ function EmployeeWorkTrackingApp() {
   };
 
   const handleLoginSuccess = (userData) => {
+    auth.login(userData);
     console.log(userData);
     const dashboardPath =
       userData.role === "admin"

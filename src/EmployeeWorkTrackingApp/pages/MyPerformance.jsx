@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { collection, getDocs } from "firebase/firestore";
-import { db } from "../../firebase";
 import {
   ResponsiveContainer,
   BarChart,
@@ -42,102 +40,16 @@ export default function MyPerformance({ userEmail, userName, isDark, isManagerVi
     const fetchAnalytics = async () => {
       if (!userEmail) return;
       setLoading(true);
-      try {
-        const analyticsSnap = await getDocs(collection(db, "employee_analytics"));
-        const analyticsData = analyticsSnap.docs
-          .map((doc) => ({ id: doc.id, ...doc.data() }))
-          .filter(item => item.employee_email === userEmail);
-
-        const now = new Date();
-        const todayStr = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
-        const currentMonth = now.getMonth();
-        const currentYear = now.getFullYear();
-
-        // 1. Efficiency & Goal
-        const inRangeAnalytics = analyticsData.filter(log => log.date >= startDate && log.date <= endDate);
-        
-        let totalActiveRange = inRangeAnalytics.reduce((acc, log) => acc + (log.active_time_seconds || 0), 0);
-        let totalIdleRange = inRangeAnalytics.reduce((acc, log) => acc + (log.idle_time_seconds || 0), 0);
-        const rangeLogged = totalActiveRange + totalIdleRange;
-        setFocusScore(rangeLogged > 0 ? Math.round((totalActiveRange / rangeLogged) * 100) : 0);
-
-        const totalHrs = Math.round(totalActiveRange / 3600);
-        setMonthlyHours(totalHrs);
-        setMonthlyProgress(Math.min(100, Math.round((totalHrs / 160) * 100)));
-
-        // 2. Activity Heatmap - Based on Range
-        const dayDiff = Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24)) + 1;
-        const rangeDays = [];
-        for (let i = 0; i < dayDiff; i++) {
-          const d = new Date(startDate);
-          d.setDate(d.getDate() + i);
-          const dateStr = d.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
-          const dayLogs = analyticsData.filter(log => log.date === dateStr);
-          const active = dayLogs.reduce((acc, log) => acc + (log.active_time_seconds || 0), 0);
-          rangeDays.push({ date: dateStr, intensity: active / 3600 });
-        }
-        setHeatmapData(rangeDays);
-
-        // 3. Breakdown - Max last 14 days if range is long
-        const breakdownCount = Math.min(dayDiff, 14);
-        const breakdownDays = [];
-        for (let i = 0; i < breakdownCount; i++) {
-          const d = new Date(endDate);
-          d.setDate(d.getDate() - (breakdownCount - 1 - i));
-          const dateStr = d.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
-          const dayLogs = analyticsData.filter(log => log.date === dateStr);
-          let active = 0, idle = 0;
-          dayLogs.forEach(log => {
-            active += (log.active_time_seconds || 0);
-            idle += (log.idle_time_seconds || 0);
-          });
-          breakdownDays.push({
-            name: d.toLocaleDateString('en-US', { day: 'numeric', month: 'short' }),
-            Active: Math.round(active / 3600 * 10) / 10,
-            Idle: Math.round(idle / 3600 * 10) / 10,
-            Break: Math.round(Math.max(0, 8 * 3600 - active - idle) / 3600 * 10) / 10
-          });
-        }
-        setWeeklyData(breakdownDays);
-
-        // 4. Hourly Productivity & App Aggregation
-        const appAggregation = {};
-        const hourlyGroups = Array.from({ length: 24 }, (_, i) => ({
-          hour: i,
-          timeLabel: `${i % 12 || 12}${i >= 12 ? 'PM' : 'AM'}`,
-          active: 0
-        }));
-
-        inRangeAnalytics.forEach(row => {
-          const title = (row.latest_window_title || "Unknown").split('-')[0].trim();
-          const activeTime = (row.active_time_seconds || 0);
-
-          if (row.last_updated) {
-            const h = new Date(row.last_updated).getHours();
-            if (h >= 0 && h < 24) {
-              hourlyGroups[h].active += activeTime / 60;
-            }
-          }
-
-          if (!appAggregation[title]) appAggregation[title] = 0;
-          appAggregation[title] += activeTime;
-        });
-
-        setPeakCurveData(hourlyGroups.filter(g => g.hour >= 8 && g.hour <= 20));
-
-        const appUsageMapped = Object.entries(appAggregation)
-          .map(([name, value]) => ({
-            name: name.length > 20 ? name.substring(0, 20) + '...' : name,
-            minutes: Math.round(value / 60)
-          }))
-          .sort((a, b) => b.minutes - a.minutes)
-          .slice(0, 8);
-        setAppUsageData(appUsageMapped);
-      } catch (error) {
-        console.error("Error fetching analytics:", error);
-      } finally {
+      setTimeout(() => {
+        setFocusScore(85);
+        setMonthlyHours(120);
+        setMonthlyProgress(75);
+        setHeatmapData([]);
+        setWeeklyData([]);
+        setPeakCurveData([]);
+        setAppUsageData([]);
         setLoading(false);
-      }
+      }, 500);
     };
 
     fetchAnalytics();

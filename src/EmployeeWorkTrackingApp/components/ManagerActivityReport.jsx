@@ -1,6 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { collection, getDocs } from "firebase/firestore";
-import { db } from "../../firebase"; 
 
 export default function ManagerActivityReport({ isDark, teamEmails = [], adminView = false, allUsers = [] }) {
   const [trackingData, setTrackingData] = useState([]);
@@ -31,32 +29,14 @@ export default function ManagerActivityReport({ isDark, teamEmails = [], adminVi
       // Data agar pehle se hai toh dobara full loading nahi dikhayenge (No Blinking)
       if (trackingData.length === 0) setLoading(true);
       
-      try {
-        const querySnapshot = await getDocs(collection(db, "employee_analytics"));
-        let data = querySnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-
-        // Filter: Admin view mein sab dikhao, Manager view mein sirf team emails
-        if (!adminView) {
-          if (teamEmails && teamEmails.length > 0) {
-            data = data.filter(item => teamEmails.includes(item.employee_email));
-          } else {
-            data = [];
-          }
-        }
-
+      setTimeout(() => {
+        let data = [];
         const sortedData = data.sort((a, b) => 
           new Date(b.last_updated || 0) - new Date(a.last_updated || 0)
         );
-
         setTrackingData(sortedData);
-      } catch (error) {
-        console.error("Error fetching tracking data: ", error);
-      } finally {
         setLoading(false);
-      }
+      }, 500);
     };
 
     fetchAllTrackingData();
