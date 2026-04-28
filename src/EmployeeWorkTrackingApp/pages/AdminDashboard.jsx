@@ -11,6 +11,7 @@ import ManagerActivityReport from "../components/ManagerActivityReport";
 import OrgOverview from "../components/OrgOverview";
 import MyPerformance from "./MyPerformance";
 import DepartmentPerformance from "../components/DepartmentPerformance";
+import useFirebaseData from "../hooks/useFirebaseData";
 
 import { useOutletContext } from "react-router-dom";
 
@@ -74,11 +75,13 @@ export default function AdminDashboard() {
   const [managerSearchTerm, setManagerSearchTerm] = useState("");
   const [employeeSearchTerm, setEmployeeSearchTerm] = useState("");
 
-  const [allUsers, setAllUsers] = useState([]);
-  const [workLogs, setWorkLogs] = useState([]);
-  const [leaveRequests, setLeaveRequests] = useState([]);
-  const [analyticsData, setAnalyticsData] = useState([]);
-  const [loadingData, setLoadingData] = useState(true);
+  // ── Firebase real-time data ──────────────────────────────────────────────
+  const firebaseData = useFirebaseData(auth?.currentUser);
+  const allUsers = firebaseData.allUsers;
+  const workLogs = firebaseData.workLogs;
+  const leaveRequests = firebaseData.leaveRequests;
+  const loadingData = firebaseData.isLoading;
+  const analyticsData = []; // Fallback empty array since it's locally managed
 
   const [attendanceFilter, setAttendanceFilter] = useState(null);
   const [presentSubFilter, setPresentSubFilter] = useState("all");
@@ -96,34 +99,17 @@ export default function AdminDashboard() {
   const [selectedDeptAnalysisName, setSelectedDeptAnalysisName] = useState("");
   const [analysisReturnTo, setAnalysisReturnTo] = useState(null);
 
-  const fetchDashboardData = async () => {
-    setLoadingData(true);
-    setTimeout(() => {
-      setAllUsers([]);
-      setWorkLogs([]);
-      setLeaveRequests([]);
-      setAnalyticsData([]);
-
-      const currentYear = new Date().getFullYear();
-      const IT_HOLIDAYS = [
-        {
-          date: `${currentYear}-01-14`,
-          name: "Makar Sankranti",
-          type: "Optional",
-        },
-        { date: `${currentYear}-03-04`, name: "Dhuleti", type: "Mandatory" },
-        {
-          date: `${currentYear}-08-28`,
-          name: "Raksha Bandhan",
-          type: "Optional",
-        },
-        { date: `${currentYear}-10-19`, name: "Dussehra", type: "Mandatory" },
-        { date: `${currentYear}-11-09`, name: "New Year", type: "Mandatory" },
-      ];
-
-      setPublicHolidays(IT_HOLIDAYS);
-      setLoadingData(false);
-    }, 500);
+  // Holidays initialization (local)
+  const initHolidays = () => {
+    const currentYear = new Date().getFullYear();
+    const IT_HOLIDAYS = [
+      { date: `${currentYear}-01-14`, name: "Makar Sankranti", type: "Optional" },
+      { date: `${currentYear}-03-04`, name: "Dhuleti", type: "Mandatory" },
+      { date: `${currentYear}-08-28`, name: "Raksha Bandhan", type: "Optional" },
+      { date: `${currentYear}-10-19`, name: "Dussehra", type: "Mandatory" },
+      { date: `${currentYear}-11-09`, name: "New Year", type: "Mandatory" },
+    ];
+    setPublicHolidays(IT_HOLIDAYS);
   };
 
   const user = auth?.currentUser || {};
@@ -153,7 +139,7 @@ export default function AdminDashboard() {
   }, [userName]);
 
   useEffect(() => {
-    fetchDashboardData();
+    initHolidays();
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
@@ -245,8 +231,12 @@ export default function AdminDashboard() {
   };
 
   const handleApproveUser = async (employeeId) => {
-    showToast("Account approved successfully!", "success");
-    fetchDashboardData();
+    const result = await firebaseData.approveEmployee(employeeId);
+    if (result.success) {
+      showToast("Account approved successfully!", "success");
+    } else {
+      showToast("Failed to approve: " + (result.message || ""), "error");
+    }
   };
 
   const handleRejectUser = async (employeeId) => {
@@ -255,8 +245,12 @@ export default function AdminDashboard() {
         "Are you sure you want to reject and delete this registration?"
       )
     ) {
-      showToast("Registration rejected.", "success");
-      fetchDashboardData();
+      const result = await firebaseData.rejectEmployee(employeeId);
+      if (result.success) {
+        showToast("Registration rejected.", "success");
+      } else {
+        showToast("Failed to reject: " + (result.message || ""), "error");
+      }
     }
   };
 
@@ -266,8 +260,12 @@ export default function AdminDashboard() {
         `Are you sure you want to delete ${employeeName}? This action cannot be undone.`
       )
     ) {
-      showToast(`${employeeName} deleted.`, "success");
-      fetchDashboardData();
+      const result = await firebaseData.deleteEmployee(employeeId, auth?.currentUser);
+      if (result.success) {
+        showToast(`${employeeName} deleted.`, "success");
+      } else {
+        showToast(result.message || "Failed to delete.", "error");
+      }
     }
   };
 
@@ -351,13 +349,21 @@ export default function AdminDashboard() {
   };
 
   const handleApproveLeave = async (requestId) => {
-    showToast("Leave request approved!", "success");
-    fetchDashboardData();
+    const result = await firebaseData.approveLeaveRequest(requestId);
+    if (result.success) {
+      showToast("Leave request approved!", "success");
+    } else {
+      showToast("Failed to approve leave.", "error");
+    }
   };
 
   const handleRejectLeave = async (requestId) => {
-    showToast("Leave request rejected!", "success");
-    fetchDashboardData();
+    const result = await firebaseData.rejectLeaveRequest(requestId);
+    if (result.success) {
+      showToast("Leave request rejected!", "success");
+    } else {
+      showToast("Failed to reject leave.", "error");
+    }
   };
 
   const getFilteredList = () => {
@@ -464,80 +470,85 @@ export default function AdminDashboard() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="space-y-6"
+            className="space-y-6 max-w-7xl mx-auto"
           >
             <motion.div
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
-              className={`rounded-2xl p-6 shadow-lg border ${isDark
-                ? "bg-gradient-to-r from-gray-800 to-gray-700 border-gray-600"
-                : "bg-gradient-to-r from-cyan-50 via-blue-50 to-indigo-50 border-blue-100"
+              className={`rounded-3xl p-8 sm:p-10 shadow-xl border relative overflow-hidden ${isDark
+                ? "bg-gradient-to-r from-gray-800/80 to-gray-900/80 backdrop-blur-xl border-gray-700/50"
+                : "bg-white/60 backdrop-blur-xl border-white/60"
                 }`}
             >
-              <div className="flex items-center justify-between flex-wrap gap-4">
+              {/* Decorative blur elements for header */}
+              <div className="absolute -top-24 -right-24 w-64 h-64 bg-blue-500/20 rounded-full blur-3xl pointer-events-none"></div>
+              <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-cyan-400/20 rounded-full blur-3xl pointer-events-none"></div>
+              
+              <div className="flex items-center justify-between flex-wrap gap-6 relative z-10">
                 <div>
                   <h1
-                    className={`text-3xl sm:text-4xl font-black ${isDark ? "text-white" : "text-gray-800"
+                    className={`text-4xl sm:text-5xl font-black tracking-tight ${isDark ? "text-white" : "text-gray-900"
                       }`}
                   >
-                    Welcome back, <span className="text-blue-500 font-extrabold">{userName}</span>
+                    Welcome back, <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-500 font-extrabold">{userName}</span>
                   </h1>
-                  <p className={`text-sm mt-1 font-medium ${isDark ? "text-gray-400" : "text-gray-500"}`}>
-                    Have a great day ahead!
+                  <p className={`text-base sm:text-lg mt-2 font-medium ${isDark ? "text-gray-400" : "text-gray-500"}`}>
+                    Here's what's happening across your organization today.
                   </p>
                 </div>
                 <motion.div
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className="flex flex-col items-center sm:items-end"
+                  className="flex flex-col items-center sm:items-end bg-black/5 dark:bg-white/5 backdrop-blur-md px-6 py-4 rounded-2xl border border-white/20 dark:border-white/5"
                 >
-                  <p className={`text-xl sm:text-2xl font-mono font-bold tracking-tight leading-none ${isDark ? "text-white" : "text-blue-600"
+                  <p className={`text-2xl sm:text-3xl font-mono font-bold tracking-tight leading-none ${isDark ? "text-white" : "text-blue-600"
                     }`}>
                     {formatTime(currentTime)}
                   </p>
-                  <p className={`text-sm font-bold tracking-wide ${isDark ? "text-gray-400" : "text-gray-500"}`}>
+                  <p className={`text-sm font-bold tracking-wide mt-1 uppercase ${isDark ? "text-cyan-400" : "text-gray-500"}`}>
                     {formatDate(currentTime)}
                   </p>
                 </motion.div>
               </div>
             </motion.div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {stats.map((stat, index) => (
                 <motion.div
                   key={stat.title}
                   initial={{ opacity: 0, y: 30 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                  whileHover={{ scale: 1.03, y: -5 }}
-                  className={`rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all border cursor-pointer ${isDark
-                    ? "bg-gray-800 border-gray-700 hover:bg-gray-750"
-                    : "bg-white border-gray-100"
+                  transition={{ delay: index * 0.1, type: "spring", stiffness: 100 }}
+                  whileHover={{ scale: 1.03, translateY: -5 }}
+                  className={`rounded-3xl p-6 shadow-lg hover:shadow-2xl transition-all duration-300 border cursor-pointer relative overflow-hidden group ${isDark
+                    ? "bg-gray-800/80 backdrop-blur-lg border-gray-700/50 hover:bg-gray-750/90"
+                    : "bg-white/80 backdrop-blur-lg border-white/60"
                     }`}
                   onClick={stat.action}
                 >
-                  <div className="flex items-center justify-between">
+                  <div className={`absolute -right-10 -bottom-10 w-32 h-32 rounded-full bg-gradient-to-br ${stat.color} opacity-10 group-hover:opacity-20 group-hover:scale-150 transition-all duration-500 pointer-events-none`}></div>
+                  <div className="flex items-start justify-between relative z-10">
                     <div>
                       <p
                         className={
                           isDark
-                            ? "text-gray-400 text-sm font-medium"
-                            : "text-gray-500 text-sm font-medium"
+                            ? "text-gray-400 text-sm font-bold tracking-wider uppercase mb-1"
+                            : "text-gray-500 text-sm font-bold tracking-wider uppercase mb-1"
                         }
                       >
                         {stat.title}
                       </p>
                       <p
-                        className={`text-4xl font-bold mt-1 ${isDark ? "text-white" : "text-gray-800"
+                        className={`text-5xl font-black mt-2 tracking-tight ${isDark ? "text-white" : "text-gray-900"
                           }`}
                       >
                         {stat.value}
                       </p>
                     </div>
                     <div
-                      className={`w-14 mt-5 h-14 bg-gradient-to-br ${stat.color} rounded-2xl flex items-center justify-center shadow-lg`}
+                      className={`w-14 h-14 bg-gradient-to-br ${stat.color} rounded-2xl flex items-center justify-center shadow-[0_8px_16px_rgb(0,0,0,0.15)] group-hover:rotate-6 group-hover:scale-110 transition-transform duration-300`}
                     >
-                      <i className={`fas ${stat.icon} text-white text-xl`}></i>
+                      <i className={`fas ${stat.icon} text-white text-xl drop-shadow-md`}></i>
                     </div>
                   </div>
                 </motion.div>
@@ -1983,8 +1994,8 @@ export default function AdminDashboard() {
 
       <div
         className={`flex min-h-screen ${isDark
-          ? "bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900"
-          : "bg-gradient-to-br from-cyan-50 via-blue-50 to-indigo-50"
+          ? "bg-[#0B1121] text-gray-100"
+          : "bg-mesh text-gray-800"
           }`}
       >
         <AdminSidebar
@@ -2018,7 +2029,7 @@ export default function AdminDashboard() {
           }}
         />
         <div
-          className={`flex-1 overflow-y-auto p-4 pt-20 sm:p-6 sm:pt-24 md:p-8 md:pt-24 lg:p-8 relative w-full transition-all duration-300 ${isSidebarOpen ? "lg:ml-72" : "lg:ml-0"
+          className={`flex-1 overflow-y-auto p-4 pt-20 sm:p-6 sm:pt-24 md:p-8 md:pt-24 lg:p-8 relative w-full transition-all duration-500 ease-out ${isSidebarOpen ? "lg:ml-[280px]" : "lg:ml-0"
             }`}
           style={{ height: "100vh" }}
         >
@@ -2054,7 +2065,7 @@ export default function AdminDashboard() {
         isOpen={showSelectHolidaysModal}
         onClose={() => setShowSelectHolidaysModal(false)}
         currentHolidays={publicHolidays}
-        onSaveSuccess={fetchDashboardData}
+        onSaveSuccess={initHolidays}
         isSidebarOpen={isSidebarOpen}
       />
     </>

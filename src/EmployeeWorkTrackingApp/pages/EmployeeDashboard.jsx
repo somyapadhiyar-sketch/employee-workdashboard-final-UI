@@ -11,12 +11,18 @@ import { useTheme } from "../context/ThemeContext";
 import ProfilePage from "./ProfilePage";
 import ActivityReport from "../components/ActivityReport";
 import MyPerformance from "./MyPerformance";
+import useFirebaseData from "../hooks/useFirebaseData";
 
 export default function EmployeeDashboard() {
   const { auth, onLogout } = useOutletContext();
   const navigate = useNavigate();
   const { isDark, toggleTheme } = useTheme();
   const { departmentsMap } = useDepartments();
+
+  // Derive user early so it can be passed to hooks
+  const user = auth?.currentUser || {};
+  const currentUserId = user?.uid || user?.id;
+  const today = new Date().toISOString().split("T")[0];
 
   const [currentSection, setCurrentSection] = useState("dashboard");
 
@@ -63,36 +69,28 @@ export default function EmployeeDashboard() {
   const menuTimeoutRef = useRef(null);
 
 
-  // NEW STATE FOR FIREBASE DATA
-  const [allWorkLogs, setAllWorkLogs] = useState([]);
-  const [allLeaveRequests, setAllLeaveRequests] = useState([]);
-  const [loadingData, setLoadingData] = useState(true);
+  // ── Firebase real-time data ──────────────────────────────────────────
+  // Extra state
   const [searchTerm, setSearchTerm] = useState("");
-  const [searchDate, setSearchDate] = useState("");
-
-  // Edit Log State
   const [editingLogId, setEditingLogId] = useState(null);
   const [description, setDescription] = useState("");
 
-  // 1. Fetch data from Firestore
-  const fetchDashboardData = async () => {
-    setLoadingData(true);
-    setTimeout(() => {
-      setAllWorkLogs([]);
-      setAllLeaveRequests([]);
-      setPublicHolidays([]);
-      setLoadingData(false);
-    }, 500);
-  };
+  const firebaseData = useFirebaseData(user);
+  const allWorkLogs = firebaseData.workLogs;
+  const allLeaveRequests = firebaseData.leaveRequests;
+  const loadingData = firebaseData.isLoading;
 
+  // Initialize holidays
   useEffect(() => {
-    fetchDashboardData();
+    const currentYear = new Date().getFullYear();
+    setPublicHolidays([
+      { date: `${currentYear}-01-14`, name: "Makar Sankranti", type: "Optional" },
+      { date: `${currentYear}-03-04`, name: "Dhuleti", type: "Mandatory" },
+      { date: `${currentYear}-08-28`, name: "Raksha Bandhan", type: "Optional" },
+      { date: `${currentYear}-10-19`, name: "Dussehra", type: "Mandatory" },
+      { date: `${currentYear}-11-09`, name: "New Year", type: "Mandatory" },
+    ]);
   }, []);
-
-  // --- DERIVED DATA ---
-  const user = auth?.currentUser || {};
-  const currentUserId = user?.uid || user?.id;
-  const today = new Date().toISOString().split("T")[0];
 
   // Set browser title with identity for Smart Tracking Agent
   useEffect(() => {
@@ -228,15 +226,31 @@ export default function EmployeeDashboard() {
       );
 
   const handleClockIn = async () => {
+    if (!currentUserId) return;
+    // Optimistic UI update
     setClockedIn(true);
     setClockInTime(formatTime(currentTime));
-    showToastMessage("Clocked in successfully!", "success");
+    const result = await firebaseData.clockIn(currentUserId);
+    if (result.success) {
+      showToastMessage("Clocked in successfully!", "success");
+    } else {
+      setClockedIn(false);
+      showToastMessage("Clock-in failed. Please try again.", "error");
+    }
   };
 
   const handleClockOut = async () => {
+    if (!currentUserId) return;
+    const activeLogId = user?.activeLogId;
     setClockedIn(false);
-    setIsOnBreak(false); // Auto-reset break on clock out
-    showToastMessage("Clocked out successfully!", "success");
+    setIsOnBreak(false);
+    const result = await firebaseData.clockOut(currentUserId, activeLogId);
+    if (result.success) {
+      showToastMessage("Clocked out successfully!", "success");
+    } else {
+      setClockedIn(true);
+      showToastMessage("Clock-out failed. Please try again.", "error");
+    }
   };
 
   const handleToggleBreak = async () => {
@@ -261,33 +275,73 @@ export default function EmployeeDashboard() {
         "error"
       );
 
-    showToastMessage("Leave request submitted!", "success");
-    setLeaveStartDate("");
-    setLeaveEndDate("");
-    setLeaveReason("");
-    fetchDashboardData();
+    const result = await firebaseData.submitLeaveRequest({
+      employeeId: currentUserId,
+      employeeName: `${user?.firstName} ${user?.lastName}`,
+      department: user?.department,
+      leaveType,
+      leaveDuration,
+      startDate: leaveStartDate,
+      endDate: leaveEndDate,
+      reason: leaveReason,
+      appliedAt: new Date().toISOString(),
+    });
+
+    if (result.success) {
+      showToastMessage("Leave request submitted!", "success");
+      setLeaveStartDate("");
+      setLeaveEndDate("");
+      setLeaveReason("");
+    } else {
+      showToastMessage("Failed to submit leave request.", "error");
+    }
   };
 
   const handleWorkLog = async (e) => {
     e.preventDefault();
     if (!taskStartTime || !taskEndTime)
       return alert("Please select both start and end time!");
+    if (!workType)
+      return showToastMessage("Please select a work type first!", "error");
 
     const [hours, mins] = calculatedDuration.split(":").map(Number);
     const totalHours = hours + mins / 60;
 
+    const logEntry = {
+      employeeId: currentUserId,
+      employeeName: `${user?.firstName} ${user?.lastName}`,
+      department: user?.department,
+      workType,
+      description,
+      taskStartTime,
+      taskEndTime,
+      duration: calculatedDuration,
+      totalHours,
+      date: getISTDate(),
+    };
+
+    let result;
     if (editingLogId) {
-      showToastMessage("Work entry updated!", "success");
-      setEditingLogId(null);
+      result = await firebaseData.updateWorkLog(editingLogId, logEntry);
+      if (result.success) {
+        showToastMessage("Work entry updated!", "success");
+        setEditingLogId(null);
+      } else {
+        showToastMessage("Failed to update entry.", "error");
+      }
     } else {
-      showToastMessage("Work entry saved!", "success");
+      result = await firebaseData.addWorkLog(logEntry);
+      if (result.success) {
+        showToastMessage("Work entry saved!", "success");
+      } else {
+        showToastMessage("Failed to save entry.", "error");
+      }
     }
 
     setDescription("");
     setTaskStartTime("");
     setTaskEndTime("");
     setCalculatedDuration("");
-    fetchDashboardData();
   };
 
   const handleEditLog = (log) => {
@@ -303,8 +357,12 @@ export default function EmployeeDashboard() {
 
   const handleDeleteLog = async (logId) => {
     if (window.confirm("Are you sure you want to delete this work entry?")) {
-      showToastMessage("Work entry deleted!", "success");
-      fetchDashboardData();
+      const result = await firebaseData.deleteWorkLog(logId);
+      if (result.success) {
+        showToastMessage("Work entry deleted!", "success");
+      } else {
+        showToastMessage("Failed to delete entry.", "error");
+      }
     }
   };
 
@@ -1038,8 +1096,8 @@ export default function EmployeeDashboard() {
                           disabled={!isAvailable}
                           className={`p-4 rounded-xl border-2 text-left transition ${leaveType === type
                             ? type === "sick"
-                              ? "border-rose-500 bg-rose-50"
-                              : "border-blue-500 bg-blue-50"
+                              ? isDark ? "border-rose-500 bg-rose-900/30" : "border-rose-500 bg-rose-50"
+                              : isDark ? "border-blue-500 bg-blue-900/30" : "border-blue-500 bg-blue-50"
                             : isDark
                               ? "border-gray-600 bg-gray-700"
                               : "border-gray-200"
@@ -1264,7 +1322,12 @@ export default function EmployeeDashboard() {
                         </tr>
                       ) : (
                         filteredMyLeaveHistory.map((req) => (
-                          <tr key={req.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                          <tr key={req.id} className={`transition-colors hover:shadow-md ${req.status === "pending"
+                            ? isDark ? "bg-amber-900/10 hover:bg-amber-900/20" : "bg-amber-50/50 hover:bg-amber-50"
+                            : req.status === "approved"
+                              ? isDark ? "bg-emerald-900/10 hover:bg-emerald-900/20" : "bg-emerald-50/50 hover:bg-emerald-50"
+                              : isDark ? "bg-rose-900/10 hover:bg-rose-900/20" : "bg-rose-50/50 hover:bg-rose-50"
+                            }`}>
                             <td className={`px-4 py-4 whitespace-nowrap text-sm ${isDark ? "text-gray-300" : "text-gray-600"}`}>
                               {new Date(req.appliedAt || req.startDate).toLocaleDateString()}
                             </td>
@@ -1493,8 +1556,8 @@ export default function EmployeeDashboard() {
 
       <div
         className={`flex min-h-screen relative ${isDark
-          ? "bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900"
-          : "bg-gradient-to-br from-blue-50 via-cyan-50 to-teal-50"
+          ? "bg-[#0B1121] text-gray-100"
+          : "bg-mesh text-gray-800"
           }`}
       >
         {/* Mobile Sidebar Overlay */}
@@ -1542,6 +1605,20 @@ export default function EmployeeDashboard() {
               {departmentsMap?.[user?.department]?.name}
             </p>
           </div>
+
+          {/* Theme Toggle */}
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={toggleTheme}
+            className={`mx-auto mb-6 px-4 py-2.5 rounded-xl flex items-center gap-2 font-black tracking-wide text-xs uppercase transition-all shadow-md ${isDark
+              ? "bg-gray-800 text-yellow-400 hover:bg-gray-700 border border-gray-700"
+              : "bg-white text-violet-600 hover:bg-violet-50 border border-violet-100"
+              }`}
+          >
+            <i className={`fas ${isDark ? "fa-sun" : "fa-moon"}`}></i>
+            <span>{isDark ? "Light Mode" : "Dark Mode"}</span>
+          </motion.button>
 
           <nav className="flex-1 space-y-2 px-2 overflow-y-auto scrollbar-hide">
             <button
@@ -1656,7 +1733,7 @@ export default function EmployeeDashboard() {
         </motion.div>
 
         <div
-          className={`flex-1 overflow-y-auto p-4 pt-20 sm:p-5 sm:pt-22 md:p-6 md:pt-24 lg:p-6 relative w-full transition-all duration-300 ${isSidebarOpen ? "lg:ml-72" : "lg:ml-0"
+          className={`flex-1 overflow-y-auto p-4 pt-20 sm:p-5 sm:pt-22 md:p-6 md:pt-24 lg:p-6 relative w-full transition-all duration-500 ease-out ${isSidebarOpen ? "lg:ml-[280px]" : "lg:ml-0"
             }`}
           style={{ height: "100vh" }}
         >

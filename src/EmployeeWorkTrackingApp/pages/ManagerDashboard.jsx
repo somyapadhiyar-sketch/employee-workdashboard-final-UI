@@ -13,11 +13,17 @@ import { useOutletContext } from "react-router-dom";
 import ManagerActivityReport from "../components/ManagerActivityReport";
 import TeamDynamics from "../components/TeamDynamics";
 import MyPerformance from "./MyPerformance";
+import useFirebaseData from "../hooks/useFirebaseData";
 
 export default function ManagerDashboard() {
   const { auth, onLogout } = useOutletContext();
   const { isDark, toggleTheme } = useTheme();
   const { departmentsMap } = useDepartments();
+
+  // Derive user early so hooks can use it
+  const user = auth?.currentUser || {};
+  const currentUserId = user?.uid || user?.id;
+  const today = new Date().toISOString().split("T")[0];
 
   const [currentSection, setCurrentSection] = useState("dashboard");
 
@@ -54,36 +60,30 @@ export default function ManagerDashboard() {
   const [currentCalendarDate, setCurrentCalendarDate] = useState(new Date());
   const [publicHolidays, setPublicHolidays] = useState([]);
 
-  const [allUsers, setAllUsers] = useState([]);
-  const [allWorkLogs, setAllWorkLogs] = useState([]);
-  const [allLeaveRequests, setAllLeaveRequests] = useState([]);
-  const [loadingData, setLoadingData] = useState(true);
-
   // Edit Log State
   const [editingLogId, setEditingLogId] = useState(null);
   const [description, setDescription] = useState("");
   const [editingLogOwner, setEditingLogOwner] = useState(null);
   const [editingLogName, setEditingLogName] = useState(null);
 
-  const fetchDashboardData = async () => {
-    setLoadingData(true);
-    setTimeout(() => {
-      setAllUsers([]);
-      setAllWorkLogs([]);
-      setAllLeaveRequests([]);
-      setPublicHolidays([]);
-      setLoadingData(false);
-    }, 500);
-  };
+  // ── Firebase real-time data ──────────────────────────────────────────
+  const firebaseData = useFirebaseData(user);
+  const allUsers = firebaseData.allUsers;
+  const allWorkLogs = firebaseData.workLogs;
+  const allLeaveRequests = firebaseData.leaveRequests;
+  const loadingData = firebaseData.isLoading;
 
+  // Initialize holidays
   useEffect(() => {
-    fetchDashboardData();
+    const currentYear = new Date().getFullYear();
+    setPublicHolidays([
+      { date: `${currentYear}-01-14`, name: "Makar Sankranti", type: "Optional" },
+      { date: `${currentYear}-03-04`, name: "Dhuleti", type: "Mandatory" },
+      { date: `${currentYear}-08-28`, name: "Raksha Bandhan", type: "Optional" },
+      { date: `${currentYear}-10-19`, name: "Dussehra", type: "Mandatory" },
+      { date: `${currentYear}-11-09`, name: "New Year", type: "Mandatory" },
+    ]);
   }, []);
-
-  // --- DERIVED DATA ---
-  const user = auth?.currentUser || {};
-  const currentUserId = user?.uid || user?.id;
-  const today = new Date().toISOString().split("T")[0];
 
   // Set browser title with identity for Smart Tracking Agent
   useEffect(() => {
@@ -321,14 +321,22 @@ export default function ManagerDashboard() {
       );
 
   const handleApproveUser = async (employeeId) => {
-    showToastMessage("Employee approved successfully!", "success");
-    fetchDashboardData();
+    const result = await firebaseData.approveEmployee(employeeId);
+    if (result.success) {
+      showToastMessage("Employee approved successfully!", "success");
+    } else {
+      showToastMessage("Failed to approve: " + (result.message || ""), "error");
+    }
   };
 
   const handleRejectUser = async (employeeId) => {
     if (window.confirm("Are you sure you want to reject this registration?")) {
-      showToastMessage("Registration rejected.", "success");
-      fetchDashboardData();
+      const result = await firebaseData.rejectEmployee(employeeId);
+      if (result.success) {
+        showToastMessage("Registration rejected.", "success");
+      } else {
+        showToastMessage("Failed to reject: " + (result.message || ""), "error");
+      }
     }
   };
 
@@ -338,8 +346,12 @@ export default function ManagerDashboard() {
         `Are you sure you want to remove ${employeeName}? This action cannot be undone.`
       )
     ) {
-      showToastMessage(`${employeeName} removed successfully.`, "success");
-      fetchDashboardData();
+      const result = await firebaseData.deleteEmployee(employeeId, user);
+      if (result.success) {
+        showToastMessage(`${employeeName} removed successfully.`, "success");
+      } else {
+        showToastMessage(result.message || "Failed to remove employee.", "error");
+      }
     }
   };
 
@@ -350,57 +362,101 @@ export default function ManagerDashboard() {
     if (new Date(leaveStartDate) > new Date(leaveEndDate))
       return showToastMessage("End date must be after start date!", "error");
 
-    const availableLeaves =
-      LEAVE_BALANCE[leaveType].total - getUsedLeaves(leaveType);
+    const availableLeaves = LEAVE_BALANCE[leaveType].total - getUsedLeaves(leaveType);
     if (availableLeaves <= 0)
-      return showToastMessage(
-        `No ${LEAVE_BALANCE[leaveType].name} available!`,
-        "error"
-      );
+      return showToastMessage(`No ${LEAVE_BALANCE[leaveType].name} available!`, "error");
 
     const lType = leaveType;
     const lDuration = lType === "sick" ? "full" : leaveDuration;
     const lEndDate = lDuration === "half" ? leaveStartDate : leaveEndDate;
 
-    showToastMessage("Leave request submitted!", "success");
-    setLeaveStartDate("");
-    setLeaveEndDate("");
-    setLeaveReason("");
-    fetchDashboardData();
+    const result = await firebaseData.submitLeaveRequest({
+      employeeId: currentUserId,
+      employeeName: `${user?.firstName} ${user?.lastName}`,
+      department: user?.department,
+      leaveType: lType,
+      leaveDuration: lDuration,
+      startDate: leaveStartDate,
+      endDate: lEndDate,
+      reason: leaveReason,
+      appliedAt: new Date().toISOString(),
+    });
+
+    if (result.success) {
+      showToastMessage("Leave request submitted!", "success");
+      setLeaveStartDate("");
+      setLeaveEndDate("");
+      setLeaveReason("");
+    } else {
+      showToastMessage("Failed to submit leave request.", "error");
+    }
   };
 
   const handleApproveLeave = async (requestId) => {
-    showToastMessage("Leave request approved!", "success");
-    fetchDashboardData();
+    const result = await firebaseData.approveLeaveRequest(requestId);
+    if (result.success) {
+      showToastMessage("Leave request approved!", "success");
+    } else {
+      showToastMessage("Failed to approve leave.", "error");
+    }
   };
 
   const handleRejectLeave = async (requestId) => {
-    showToastMessage("Leave request rejected!", "success");
-    fetchDashboardData();
+    const result = await firebaseData.rejectLeaveRequest(requestId);
+    if (result.success) {
+      showToastMessage("Leave request rejected!", "success");
+    } else {
+      showToastMessage("Failed to reject leave.", "error");
+    }
   };
 
   const handleWorkLog = async (e) => {
     e.preventDefault();
     if (!taskStartTime || !taskEndTime)
       return alert("Please select both start and end time!");
+    if (!workType)
+      return showToastMessage("Please select a work type!", "error");
 
     const [hours, mins] = calculatedDuration.split(":").map(Number);
     const totalHours = hours + mins / 60;
 
+    const logEntry = {
+      employeeId: editingLogOwner || currentUserId,
+      employeeName: editingLogName || `${user?.firstName} ${user?.lastName}`,
+      department: user?.department,
+      workType,
+      description,
+      taskStartTime,
+      taskEndTime,
+      duration: calculatedDuration,
+      totalHours,
+      date: getISTDate(),
+    };
+
+    let result;
     if (editingLogId) {
-      showToastMessage("Work entry updated!", "success");
-      setEditingLogId(null);
-      setEditingLogOwner(null);
-      setEditingLogName(null);
+      result = await firebaseData.updateWorkLog(editingLogId, logEntry);
+      if (result.success) {
+        showToastMessage("Work entry updated!", "success");
+        setEditingLogId(null);
+        setEditingLogOwner(null);
+        setEditingLogName(null);
+      } else {
+        showToastMessage("Failed to update entry.", "error");
+      }
     } else {
-      showToastMessage("Work entry saved!", "success");
+      result = await firebaseData.addWorkLog(logEntry);
+      if (result.success) {
+        showToastMessage("Work entry saved!", "success");
+      } else {
+        showToastMessage("Failed to save entry.", "error");
+      }
     }
 
     setDescription("");
     setTaskStartTime("");
     setTaskEndTime("");
     setCalculatedDuration("");
-    fetchDashboardData();
   };
 
   const handleEditLog = (log) => {
@@ -418,35 +474,44 @@ export default function ManagerDashboard() {
 
   const handleDeleteLog = async (logId) => {
     if (window.confirm("Are you sure you want to delete this work entry?")) {
-      showToastMessage("Work entry deleted!", "success");
-      fetchDashboardData();
+      const result = await firebaseData.deleteWorkLog(logId);
+      if (result.success) {
+        showToastMessage("Work entry deleted!", "success");
+      } else {
+        showToastMessage("Failed to delete entry.", "error");
+      }
     }
   };
 
-  const getAttendanceFilteredList = () => {
-    if (!attendanceFilter) return [];
-    if (attendanceFilter === "present")
-      return deptEmployees.filter((emp) => presentIds.includes(emp.id));
-    if (attendanceFilter === "absent")
-      return deptEmployees.filter((emp) => !presentIds.includes(emp.id));
-    if (attendanceFilter === "onLeave") return employeesOnLeave;
-    return deptEmployees;
-  };
-
   const handleClockIn = async () => {
+    if (!currentUserId) return;
     setClockedIn(true);
     setClockInTime(new Date());
-    showToastMessage("Clocked in successfully!", "success");
+    const result = await firebaseData.clockIn(currentUserId);
+    if (result.success) {
+      showToastMessage("Clocked in successfully!", "success");
+    } else {
+      setClockedIn(false);
+      showToastMessage("Clock-in failed. Please try again.", "error");
+    }
   };
 
   const handleClockOut = async () => {
+    if (!currentUserId) return;
+    const activeLogId = user?.activeLogId;
     setClockedIn(false);
     setClockInTime(null);
     setTaskStartTime("");
     setTaskEndTime("");
     setCalculatedDuration("");
-    setIsOnBreak(false); // Auto-reset break
-    showToastMessage("Clocked out successfully!", "success");
+    setIsOnBreak(false);
+    const result = await firebaseData.clockOut(currentUserId, activeLogId);
+    if (result.success) {
+      showToastMessage("Clocked out successfully!", "success");
+    } else {
+      setClockedIn(true);
+      showToastMessage("Clock-out failed. Please try again.", "error");
+    }
   };
 
   const handleToggleBreak = async () => {
@@ -492,6 +557,16 @@ export default function ManagerDashboard() {
     setTaskEndTime(formatTimeForInput(new Date()));
     calculateDuration(taskStartTime, formatTimeForInput(new Date()));
   };
+  const getAttendanceFilteredList = () => {
+    if (!attendanceFilter) return [];
+    if (attendanceFilter === "present")
+      return deptEmployees.filter((emp) => presentIds.includes(emp.id));
+    if (attendanceFilter === "absent")
+      return deptEmployees.filter((emp) => !presentIds.includes(emp.id));
+    if (attendanceFilter === "onLeave") return employeesOnLeave;
+    return deptEmployees;
+  };
+
   const getEmployeeWorkLogs = (employeeId) =>
     allWorkLogs.filter((log) => log.employeeId === employeeId);
   const viewEmployeeProfile = (employee) => {
@@ -975,8 +1050,8 @@ export default function ManagerDashboard() {
                           disabled={!isAvailable}
                           className={`p-4 rounded-xl border-2 text-left transition ${leaveType === type
                             ? type === "sick"
-                              ? "border-rose-500 bg-rose-50"
-                              : "border-blue-500 bg-blue-50"
+                              ? isDark ? "border-rose-500 bg-rose-900/30" : "border-rose-500 bg-rose-50"
+                              : isDark ? "border-blue-500 bg-blue-900/30" : "border-blue-500 bg-blue-50"
                             : isDark
                               ? "border-gray-600 bg-gray-700"
                               : "border-gray-200"
@@ -1201,7 +1276,12 @@ export default function ManagerDashboard() {
                         </tr>
                       ) : (
                         filteredMyLeaveHistory.map((req) => (
-                          <tr key={req.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                          <tr key={req.id} className={`transition-colors hover:shadow-md ${req.status === "pending"
+                            ? isDark ? "bg-amber-900/10 hover:bg-amber-900/20" : "bg-amber-50/50 hover:bg-amber-50"
+                            : req.status === "approved"
+                              ? isDark ? "bg-emerald-900/10 hover:bg-emerald-900/20" : "bg-emerald-50/50 hover:bg-emerald-50"
+                              : isDark ? "bg-rose-900/10 hover:bg-rose-900/20" : "bg-rose-50/50 hover:bg-rose-50"
+                            }`}>
                             <td className={`px-4 py-4 whitespace-nowrap text-sm ${isDark ? "text-gray-300" : "text-gray-600"}`}>
                               {new Date(req.appliedAt || req.startDate).toLocaleDateString()}
                             </td>
@@ -1350,9 +1430,12 @@ export default function ManagerDashboard() {
                         key={req.id}
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
-                        className={`p-5 rounded-2xl border transition-all hover:shadow-md ${isDark
-                          ? "bg-gray-700/50 border-gray-600"
-                          : "bg-white border-violet-50 shadow-sm"
+                        whileHover={{ scale: 1.01, translateY: -2 }}
+                        className={`p-5 rounded-3xl border-2 transition-all hover:shadow-xl ${req.status === "pending"
+                            ? isDark ? "bg-gradient-to-br from-amber-900/40 to-orange-900/20 border-amber-500/30" : "bg-gradient-to-br from-amber-50 to-orange-50 border-amber-200"
+                            : req.status === "approved"
+                              ? isDark ? "bg-gradient-to-br from-emerald-900/40 to-teal-900/20 border-emerald-500/30" : "bg-gradient-to-br from-emerald-50 to-teal-50 border-emerald-200"
+                              : isDark ? "bg-gradient-to-br from-rose-900/40 to-pink-900/20 border-rose-500/30" : "bg-gradient-to-br from-rose-50 to-pink-50 border-rose-200"
                           }`}
                       >
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
@@ -2452,8 +2535,8 @@ export default function ManagerDashboard() {
 
       <div
         className={`flex min-h-screen relative ${isDark
-          ? "bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900"
-          : "bg-gradient-to-br from-violet-50 via-purple-50 to-pink-50"
+          ? "bg-[#0B1121] text-gray-100"
+          : "bg-mesh text-gray-800"
           }`}
       >
         {/* Mobile Sidebar Overlay */}
@@ -2511,6 +2594,20 @@ export default function ManagerDashboard() {
               {departmentsMap?.[dept]?.name}
             </p>
           </div>
+
+          {/* Theme Toggle */}
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={toggleTheme}
+            className={`mx-auto mb-6 px-4 py-2.5 rounded-xl flex items-center gap-2 font-black tracking-wide text-xs uppercase transition-all shadow-md ${isDark
+              ? "bg-gray-800 text-yellow-400 hover:bg-gray-700 border border-gray-700"
+              : "bg-white text-violet-600 hover:bg-violet-50 border border-violet-100"
+              }`}
+          >
+            <i className={`fas ${isDark ? "fa-sun" : "fa-moon"}`}></i>
+            <span>{isDark ? "Light Mode" : "Dark Mode"}</span>
+          </motion.button>
 
           <nav className="flex-1 space-y-2 px-2 overflow-y-auto scrollbar-hide">
             <button
@@ -2677,7 +2774,7 @@ export default function ManagerDashboard() {
         </motion.div>
 
         <div
-          className={`flex-1 overflow-y-auto p-4 pt-20 sm:p-5 sm:pt-22 md:p-6 md:pt-24 lg:p-6 relative w-full transition-all duration-300 ${isSidebarOpen ? "lg:ml-72" : "lg:ml-0"
+          className={`flex-1 overflow-y-auto p-4 pt-20 sm:p-5 sm:pt-22 md:p-6 md:pt-24 lg:p-6 relative w-full transition-all duration-500 ease-out ${isSidebarOpen ? "lg:ml-[280px]" : "lg:ml-0"
             }`}
           style={{ height: "100vh" }}
         >

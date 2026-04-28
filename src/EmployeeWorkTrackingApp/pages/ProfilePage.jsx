@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useOutletContext } from "react-router-dom";
 import { useTheme } from "../context/ThemeContext";
-import useAuth from "../hooks/useAuth";
+import { useAuth } from "../hooks/AuthContext.jsx";
 import { useDepartments } from "../hooks/useDepartments";
 import {
   Edit2,
@@ -199,16 +199,13 @@ export default function ProfilePage() {
     e.preventDefault();
     setSaving(true);
     try {
-      try {
-        auth.updateUser({ ...user, ...formData });
-      } catch (e) {
-        console.warn("Ignored local state update error (likely quota):", e);
+      if (typeof auth?.updateUser === 'function') {
+        await auth.updateUser({ ...user, ...formData });
       }
-
-      setMessage({ text: "Profile Upadte successfully", type: "success" });
+      setMessage({ text: "Profile updated successfully!", type: "success" });
       setEditMode(false);
     } catch (error) {
-      console.error("Error updating profile in Firebase:", error);
+      console.error("Error updating profile:", error);
       setMessage({ text: "Failed to update profile.", type: "error" });
     } finally {
       setSaving(false);
@@ -222,31 +219,41 @@ export default function ProfilePage() {
       return;
     }
     if (passwordData.newPassword.length < 6) {
-      setMessage({
-        text: "Password must be at least 6 characters!",
-        type: "error",
-      });
+      setMessage({ text: "Password must be at least 6 characters!", type: "error" });
+      return;
+    }
+    if (!passwordData.currentPassword) {
+      setMessage({ text: "Please enter your current password.", type: "error" });
       return;
     }
     setSaving(true);
     try {
-      // 3. Update local state and context (though context will mostly update via onAuthStateChanged)
-      const updatedUser = { ...user, password: passwordData.newPassword };
-      localStorage.setItem("currentUser", JSON.stringify(updatedUser));
-      if (typeof auth?.updateUser === 'function') {
-        auth.updateUser(updatedUser);
+      // Verify current password against stored value
+      const storedUser = JSON.parse(localStorage.getItem("currentUser"));
+      if (storedUser?.password && storedUser.password !== passwordData.currentPassword) {
+        setMessage({ text: "Current password is incorrect.", type: "error" });
+        setSaving(false);
+        return;
       }
 
+      // Update password in localStorage
+      const updatedUser = { ...(storedUser || {}), password: passwordData.newPassword };
+      localStorage.setItem("currentUser", JSON.stringify(updatedUser));
+
+      // Also update in employees list
+      const employees = JSON.parse(localStorage.getItem("employees")) || [];
+      const userId = storedUser?.uid || storedUser?.id;
+      const updatedEmployees = employees.map((emp) =>
+        (emp.uid || emp.id) === userId ? { ...emp, password: passwordData.newPassword } : emp
+      );
+      localStorage.setItem("employees", JSON.stringify(updatedEmployees));
+
       setMessage({ text: "Password updated successfully!", type: "success" });
-      setPasswordData({
-        currentPassword: "",
-        newPassword: "",
-        confirmPassword: "",
-      });
+      setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });
       setShowPasswordSection(false);
     } catch (error) {
       console.error(error);
-      setMessage({ text: error.message || "Failed to update password.", type: "error" });
+      setMessage({ text: "Failed to update password.", type: "error" });
     } finally {
       setSaving(false);
     }

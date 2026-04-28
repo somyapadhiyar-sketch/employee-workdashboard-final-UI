@@ -145,10 +145,10 @@ export default function AdminSidebar({
           x: isSidebarOpen ? 0 : -300,
           opacity: isSidebarOpen ? 1 : 0,
         }}
-        transition={{ duration: 0.3, ease: "easeInOut" }}
-        className={`fixed left-0 top-0 h-full w-full lg:w-72 shadow-2xl p-4 flex flex-col z-40 border-r overflow-y-auto scrollbar-hide ${isDark
-          ? "bg-gradient-to-b from-gray-800 to-gray-900 border-gray-700"
-          : "bg-gradient-to-b from-white to-cyan-50 border-cyan-100"
+        transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1.0] }}
+        className={`fixed left-0 top-0 h-full w-full lg:w-[280px] p-5 flex flex-col z-40 overflow-y-auto custom-scrollbar border-r ${isDark
+          ? "bg-[#0f172a]/95 backdrop-blur-xl border-white/10 shadow-[4px_0_24px_rgba(0,0,0,0.5)]"
+          : "bg-white/90 backdrop-blur-xl border-gray-200/50 shadow-[4px_0_24px_rgba(0,0,0,0.04)]"
           }`}
       >
         {/* Profile Section */}
@@ -156,28 +156,30 @@ export default function AdminSidebar({
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.2 }}
-          className="text-center mb-4 pt-4"
+          className="text-center mb-6 pt-6 relative"
         >
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-32 bg-blue-500/20 rounded-full blur-2xl pointer-events-none"></div>
           <motion.div
-            whileHover={{ scale: 1.1, rotate: 5 }}
+            whileHover={{ scale: 1.05, rotate: 3 }}
+            whileTap={{ scale: 0.95 }}
             onClick={() => user?.profileImage && setIsFullScreenImage(true)}
-            className={`w-20 h-20 sm:w-24 sm:h-24 ${user?.profileImage ? '' : 'bg-gradient-to-br from-cyan-400 via-blue-500 to-indigo-600'} rounded-full flex items-center justify-center mx-auto mb-3 shadow-2xl border-4 border-white cursor-pointer overflow-hidden`}
+            className={`w-24 h-24 ${user?.profileImage ? '' : 'bg-gradient-to-tr from-blue-600 to-cyan-400'} rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-[0_8px_16px_rgb(0,0,0,0.15)] border-[3px] border-white/50 cursor-pointer overflow-hidden relative z-10 group`}
           >
             {user?.profileImage ? (
-              <img src={user.profileImage} alt="Profile" className="w-full h-full object-cover" />
+              <img src={user.profileImage} alt="Profile" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
             ) : (
-              <span className="text-3xl sm:text-4xl font-bold text-white">
+              <span className="text-4xl font-extrabold text-white drop-shadow-md">
                 {userInitial}
               </span>
             )}
           </motion.div>
           <h2
-            className={`font-bold text-xl sm:text-2xl ${isDark ? "text-white" : "text-gray-800"
+            className={`font-extrabold text-xl tracking-tight relative z-10 ${isDark ? "text-white" : "text-gray-900"
               }`}
           >
             {displayName}
           </h2>
-          <p className="text-cyan-400 text-sm font-medium">Administrator</p>
+          <p className="text-blue-500 text-xs font-bold tracking-widest uppercase mt-1 relative z-10">Administrator</p>
         </motion.div>
 
         {/* Theme Toggle */}
@@ -201,36 +203,42 @@ export default function AdminSidebar({
 
         {/* Navigation */}
         <nav
-          className="flex-1 space-y-2 px-2 overflow-y-auto scrollbar-hide"
+          className="flex-1 space-y-1.5 overflow-y-auto custom-scrollbar pr-1 relative z-10"
         >
           {menuItems.map((item, index) => (
             <div key={item.id} className="w-full relative flex flex-col">
               <motion.button
-                initial={{ x: -30, opacity: 0 }}
+                initial={{ x: -20, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
-                transition={{ delay: 0.3 + index * 0.05 }}
-                whileHover={{ scale: 1.02, x: 5 }}
+                transition={{ delay: 0.2 + index * 0.04 }}
+                whileHover={{ x: 4 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => handleMenuClick(item)}
-                className={`w-full text-left px-4 py-3 sm:py-3.5 transition-all duration-300 flex items-center justify-between group ${(currentSection === item.id || (item.id === "departments" && currentSection === "add_department"))
-                  ? `bg-gradient-to-r ${item.color} text-white shadow-lg ${item.id === "departments" && isDepartmentsExpanded ? "rounded-t-xl" : "rounded-xl"}`
+                className={`w-full text-left px-4 py-3 transition-all duration-200 flex items-center justify-between group rounded-xl ${(currentSection === item.id || (item.id === "departments" && currentSection === "add_department"))
+                  ? `bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/20`
                   : isDark
-                    ? `bg-gray-800 hover:bg-gray-700 text-gray-200 hover:text-white ${item.id === "departments" && isDepartmentsExpanded ? "rounded-t-xl" : "rounded-xl"}`
-                    : `bg-white hover:bg-cyan-50 text-gray-700 hover:text-gray-900 ${item.id === "departments" && isDepartmentsExpanded ? "rounded-t-xl" : "rounded-xl"}`
+                    ? `hover:bg-white/10 text-gray-400 hover:text-white`
+                    : `hover:bg-gray-100/80 text-gray-600 hover:text-gray-900`
                   }`}
               >
-                <span className="flex items-center gap-3">
-                  <i
-                    className={`fas ${item.icon} w-5 text-lg group-hover:scale-110 transition-transform`}
-                  ></i>
-                  <span className="font-bold">{item.label}</span>
+                <span className="flex items-center gap-3.5">
+                  <div className={`flex items-center justify-center w-8 h-8 rounded-lg transition-colors ${
+                    (currentSection === item.id || (item.id === "departments" && currentSection === "add_department"))
+                      ? "bg-white/20 text-white"
+                      : isDark
+                        ? "bg-gray-800 text-gray-400 group-hover:text-blue-400 group-hover:bg-blue-500/10"
+                        : "bg-white text-gray-500 shadow-sm group-hover:text-blue-600 group-hover:bg-blue-50"
+                  }`}>
+                    <i className={`fas ${item.icon} text-[15px]`}></i>
+                  </div>
+                  <span className="font-semibold text-[15px]">{item.label}</span>
                 </span>
                 {item.badge > 0 && item.id !== "profile" && (
                   <motion.span
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
-                    whileHover={{ scale: 1.2 }}
-                    className="bg-red-500 text-white text-xs px-2 py-1 rounded-full font-bold shadow-lg"
+                    whileHover={{ scale: 1.1 }}
+                    className="bg-red-500 text-white text-[11px] px-2 py-0.5 rounded-full font-bold shadow-sm"
                   >
                     {item.badge}
                   </motion.span>

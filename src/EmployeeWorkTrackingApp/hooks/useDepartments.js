@@ -1,40 +1,30 @@
-import { useState, useEffect } from 'react';
-import { collection, onSnapshot, doc, setDoc, serverTimestamp, deleteDoc } from 'firebase/firestore';
-import { db } from '../../firebase';
+import { useState } from 'react';
 import { DEPARTMENTS as initialDepts } from '../constants/config';
 
+// localStorage key for custom (dynamically added) departments
+const STORAGE_KEY = 'customDepartments';
+
+function getStoredCustomDepts() {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+  } catch {
+    return {};
+  }
+}
+
 export const useDepartments = () => {
-  const [departmentsMap, setDepartmentsMap] = useState(initialDepts);
-  const [loading, setLoading] = useState(true);
+  const [customDepts, setCustomDepts] = useState(getStoredCustomDepts);
 
-  useEffect(() => {
-    const q = collection(db, 'departments');
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const dbDepts = {};
-      snapshot.forEach(doc => {
-        dbDepts[doc.id] = doc.data();
-      });
-      
-      // Merge default hardcoded config with dynamically fetched ones
-      setDepartmentsMap({ ...initialDepts, ...dbDepts });
-      setLoading(false);
-    }, (error) => {
-      console.error('Error fetching dynamic departments:', error);
-      setLoading(false);
-    });
+  // Merge default config departments with any custom ones saved in localStorage
+  const departmentsMap = { ...initialDepts, ...customDepts };
 
-    return () => unsubscribe();
-  }, []);
-
-  // Use departmentsList for the dropdowns
   const departmentsList = Object.entries(departmentsMap).map(([id, data]) => ({ id, ...data }));
 
   const addDepartment = async (id, departmentData) => {
     try {
-      await setDoc(doc(db, 'departments', id), {
-        ...departmentData,
-        createdAt: serverTimestamp()
-      });
+      const updated = { ...customDepts, [id]: departmentData };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      setCustomDepts(updated);
       return { success: true };
     } catch (error) {
       console.error('Error adding new department:', error);
@@ -44,7 +34,10 @@ export const useDepartments = () => {
 
   const editDepartment = async (id, updatedData) => {
     try {
-      await setDoc(doc(db, 'departments', id), updatedData, { merge: true });
+      // For built-in departments we still store the override in customDepts
+      const updated = { ...customDepts, [id]: { ...(customDepts[id] || {}), ...updatedData } };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      setCustomDepts(updated);
       return { success: true };
     } catch (error) {
       console.error('Error editing department:', error);
@@ -54,7 +47,10 @@ export const useDepartments = () => {
 
   const deleteDepartment = async (id) => {
     try {
-      await deleteDoc(doc(db, 'departments', id));
+      const updated = { ...customDepts };
+      delete updated[id];
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      setCustomDepts(updated);
       return { success: true };
     } catch (error) {
       console.error('Error deleting department:', error);
@@ -62,5 +58,12 @@ export const useDepartments = () => {
     }
   };
 
-  return { departmentsMap, departmentsList, loading, addDepartment, editDepartment, deleteDepartment };
+  return {
+    departmentsMap,
+    departmentsList,
+    loading: false, // no async fetch needed
+    addDepartment,
+    editDepartment,
+    deleteDepartment,
+  };
 };
