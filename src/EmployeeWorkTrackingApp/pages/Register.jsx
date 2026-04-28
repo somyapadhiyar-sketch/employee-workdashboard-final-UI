@@ -120,7 +120,7 @@ export default function Register({ onSwitchToLogin, onRegisterSuccess }) {
         initial={{ opacity: 0, x: -50 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.6, ease: "easeOut" }}
-        className="w-full md:w-5/12 lg:w-1/2 bg-mesh flex flex-col justify-center items-center p-8 min-h-[35vh] md:min-h-screen order-1 relative overflow-hidden shadow-2xl z-10"
+        className="w-full md:w-5/12 lg:w-1/2 bg-auth-mesh flex flex-col justify-center items-center p-8 min-h-[35vh] md:min-h-screen order-1 relative overflow-hidden shadow-2xl z-10"
       >
         {/* Animated Background Elements */}
         <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
