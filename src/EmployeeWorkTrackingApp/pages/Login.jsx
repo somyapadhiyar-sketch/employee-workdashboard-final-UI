@@ -120,7 +120,7 @@ export default function Login({ onLoginSuccess, onSwitchToRegister }) {
   };
 
   return (
-    <div className="h-screen overflow-hidden flex flex-col md:flex-row w-full font-sans bg-gray-50">
+    <div className="min-h-screen overflow-y-auto overflow-x-hidden md:h-screen md:overflow-hidden flex flex-col md:flex-row w-full font-sans bg-gray-50">
       {/* Left Side - Branding */}
       <motion.div
         initial={{ opacity: 0, x: -50 }}
@@ -174,7 +174,7 @@ export default function Login({ onLoginSuccess, onSwitchToRegister }) {
         initial={{ opacity: 0, x: 50 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.6, ease: "easeOut", delay: 0.1 }}
-        className="w-full md:w-7/12 lg:w-1/2 flex flex-col justify-center items-center p-8 bg-white min-h-[65vh] md:min-h-screen order-2 relative"
+        className="w-full md:w-7/12 lg:w-1/2 flex flex-col justify-center items-center p-8 bg-white min-h-[65vh] md:h-screen md:overflow-y-auto custom-scrollbar order-2 relative"
       >
         <div className="w-full max-w-md relative z-10">
           <div className="mb-10 text-center md:text-left">

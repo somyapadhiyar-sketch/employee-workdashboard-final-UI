@@ -2029,7 +2029,7 @@ export default function AdminDashboard() {
           }}
         />
         <div
-          className={`flex-1 overflow-y-auto p-4 pt-20 sm:p-6 sm:pt-24 md:p-8 md:pt-24 lg:p-8 relative w-full transition-all duration-500 ease-out ${isSidebarOpen ? "lg:ml-[280px]" : "lg:ml-0"
+          className={`flex-1 min-w-0 overflow-y-auto overflow-x-hidden p-4 pt-20 sm:p-6 sm:pt-24 md:p-8 md:pt-24 lg:p-8 relative transition-all duration-500 ease-out ${isSidebarOpen ? "lg:ml-[280px]" : "lg:ml-0"
             }`}
           style={{ height: "100vh" }}
         >

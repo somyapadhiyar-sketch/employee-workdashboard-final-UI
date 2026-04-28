@@ -1733,7 +1733,7 @@ export default function EmployeeDashboard() {
         </motion.div>
 
         <div
-          className={`flex-1 overflow-y-auto p-4 pt-20 sm:p-5 sm:pt-22 md:p-6 md:pt-24 lg:p-6 relative w-full transition-all duration-500 ease-out ${isSidebarOpen ? "lg:ml-[280px]" : "lg:ml-0"
+          className={`flex-1 min-w-0 overflow-y-auto overflow-x-hidden p-4 pt-20 sm:p-5 sm:pt-22 md:p-6 md:pt-24 lg:p-6 relative transition-all duration-500 ease-out ${isSidebarOpen ? "lg:ml-[280px]" : "lg:ml-0"
             }`}
           style={{ height: "100vh" }}
         >
