@@ -120,13 +120,13 @@ export default function Login({ onLoginSuccess, onSwitchToRegister }) {
   };
 
   return (
-    <div className="min-h-screen overflow-y-auto overflow-x-hidden md:h-screen md:overflow-hidden flex flex-col md:flex-row w-full font-sans bg-gray-50">
+    <div className="min-h-screen md:h-screen md:overflow-hidden flex flex-col md:flex-row w-full font-sans bg-gray-50 overflow-y-auto md:overflow-y-hidden">
       {/* Left Side - Branding */}
       <motion.div
         initial={{ opacity: 0, x: -50 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.6, ease: "easeOut" }}
-        className="w-full md:w-5/12 lg:w-1/2 bg-auth-mesh flex flex-col justify-center items-center p-8 min-h-[35vh] md:min-h-screen order-1 relative overflow-hidden shadow-2xl z-10"
+        className="w-full md:w-5/12 lg:w-1/2 bg-auth-mesh flex flex-col justify-center items-center p-6 md:p-8 min-h-[30vh] md:min-h-screen order-1 relative overflow-hidden shadow-2xl z-10"
       >
         {/* Animated Background Elements */}
         <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
@@ -169,46 +169,45 @@ export default function Login({ onLoginSuccess, onSwitchToRegister }) {
         </motion.div>
       </motion.div>
 
-      {/* Right Side - Login Form */}
       <motion.div
         initial={{ opacity: 0, x: 50 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.6, ease: "easeOut", delay: 0.1 }}
-        className="w-full md:w-7/12 lg:w-1/2 flex flex-col justify-center items-center p-8 bg-white min-h-[65vh] md:h-screen md:overflow-hidden order-2 relative"
+        className="w-full md:w-7/12 lg:w-1/2 flex flex-col justify-center items-center p-6 md:p-10 bg-white min-h-[70vh] md:h-full md:overflow-hidden order-2 relative"
       >
         <div className="w-full max-w-md relative z-10">
-          <div className="mb-6 md:mb-8 text-center md:text-left">
-            <h2 className="text-4xl font-extrabold text-gray-900 mb-3 tracking-tight">Welcome Back</h2>
-            <p className="text-gray-500 font-medium">Please sign in to your account</p>
+          <div className="mb-4 md:mb-6 text-center md:text-left">
+            <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-2 tracking-tight">Welcome Back</h2>
+            <p className="text-gray-500 font-medium text-sm md:text-base">Please sign in to your account</p>
           </div>
 
           {error && (
             <motion.div
               initial={{ opacity: 0, y: -10, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              className="bg-red-50/80 backdrop-blur border border-red-100 text-red-600 px-5 py-4 rounded-2xl mb-6 shadow-sm flex items-center font-medium"
+              className="bg-red-50/80 backdrop-blur border border-red-100 text-red-600 px-4 py-3 rounded-xl mb-4 shadow-sm flex items-center font-medium text-xs md:text-sm"
             >
-              <i className="fas fa-exclamation-circle text-lg mr-3 text-red-500"></i>
+              <i className="fas fa-exclamation-circle text-base mr-3 text-red-500"></i>
               {error}
             </motion.div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
-            <div className="space-y-4 md:space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-3 md:space-y-4">
+            <div className="space-y-3 md:space-y-4">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2 ml-1">
+                <label className="block text-xs md:text-sm font-semibold text-gray-700 mb-1.5 ml-1">
                   Email Address
                 </label>
                 <div className="relative group">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400 group-focus-within:text-blue-500 transition-colors">
-                    <i className="fas fa-envelope"></i>
+                    <i className="fas fa-envelope text-sm"></i>
                   </div>
                   <input
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    className="w-full pl-11 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none font-medium text-gray-800 shadow-sm"
+                    className="w-full pl-11 pr-4 py-2.5 md:py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none font-medium text-gray-800 text-sm shadow-sm"
                     placeholder="name@company.com"
                     id="login-email"
                   />
@@ -216,19 +215,19 @@ export default function Login({ onLoginSuccess, onSwitchToRegister }) {
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2 ml-1">
+                <label className="block text-xs md:text-sm font-semibold text-gray-700 mb-1.5 ml-1">
                   Password
                 </label>
                 <div className="relative group">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400 group-focus-within:text-blue-500 transition-colors">
-                    <i className="fas fa-lock"></i>
+                    <i className="fas fa-lock text-sm"></i>
                   </div>
                   <input
                     type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    className="w-full pl-11 pr-12 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none font-medium text-gray-800 shadow-sm"
+                    className="w-full pl-11 pr-12 py-2.5 md:py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none font-medium text-gray-800 text-sm shadow-sm"
                     placeholder="Enter your password"
                     id="login-password"
                   />
@@ -237,17 +236,17 @@ export default function Login({ onLoginSuccess, onSwitchToRegister }) {
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors focus:outline-none p-1"
                   >
-                    <i className={`fas ${showPassword ? "fa-eye-slash" : "fa-eye"}`}></i>
+                    <i className={`fas ${showPassword ? "fa-eye-slash" : "fa-eye"} text-sm`}></i>
                   </button>
                 </div>
               </div>
             </div>
 
-            <div className="pt-2">
-              <label className="block text-sm font-semibold text-gray-700 mb-3 ml-1">
+            <div className="pt-1">
+              <label className="block text-xs md:text-sm font-semibold text-gray-700 mb-2 ml-1">
                 Account Type
               </label>
-              <div className="grid grid-cols-3 gap-3 bg-gray-50 p-1.5 rounded-2xl border border-gray-100">
+              <div className="grid grid-cols-3 gap-2 bg-gray-50 p-1 rounded-xl border border-gray-100">
                 {[
                   { value: "employee", label: "Employee", icon: "fa-user" },
                   { value: "dept_manager", label: "Manager", icon: "fa-user-tie" },
@@ -259,14 +258,14 @@ export default function Login({ onLoginSuccess, onSwitchToRegister }) {
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => setRole(option.value)}
-                    className={`py-2.5 px-1 rounded-xl transition-all text-center flex flex-col items-center justify-center gap-1 ${
+                    className={`py-2 px-1 rounded-lg transition-all text-center flex flex-col items-center justify-center gap-1 ${
                       role === option.value
                         ? "bg-white shadow-sm border border-gray-200 text-blue-600 font-semibold"
                         : "text-gray-500 hover:text-gray-700 font-medium"
                     }`}
                   >
-                    <i className={`fas ${option.icon} ${role === option.value ? 'text-lg' : 'text-base'} transition-all`}></i>
-                    <span className="text-xs">{option.label}</span>
+                    <i className={`fas ${option.icon} ${role === option.value ? 'text-base' : 'text-sm'} transition-all`}></i>
+                    <span className="text-[10px] md:text-xs">{option.label}</span>
                   </motion.button>
                 ))}
               </div>
@@ -278,24 +277,24 @@ export default function Login({ onLoginSuccess, onSwitchToRegister }) {
               type="submit"
               disabled={loading}
               id="login-submit"
-              className="w-full py-4 mt-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-2xl shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 transition-all disabled:opacity-70 text-lg relative overflow-hidden group"
+              className="w-full py-3 md:py-3.5 mt-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 transition-all disabled:opacity-70 text-base md:text-lg relative overflow-hidden group"
             >
               <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]"></div>
               {loading ? (
                 <span className="flex items-center justify-center">
-                  <i className="fas fa-circle-notch fa-spin mr-3 text-xl"></i>
+                  <i className="fas fa-circle-notch fa-spin mr-3 text-lg"></i>
                   Authenticating...
                 </span>
               ) : (
                 <span className="flex items-center justify-center">
-                  Sign In <i className="fas fa-arrow-right ml-2 text-sm"></i>
+                  Sign In <i className="fas fa-arrow-right ml-2 text-xs"></i>
                 </span>
               )}
             </motion.button>
           </form>
 
-          <div className="mt-6 md:mt-8 text-center">
-            <p className="text-gray-500 font-medium">
+          <div className="mt-4 md:mt-6 text-center">
+            <p className="text-gray-500 font-medium text-sm">
               New to WorkTracker?{" "}
               <button
                 onClick={onSwitchToRegister}
@@ -308,7 +307,7 @@ export default function Login({ onLoginSuccess, onSwitchToRegister }) {
         </div>
         
         {/* Subtle background decoration right side */}
-        <div className="absolute bottom-0 right-0 w-64 h-64 bg-blue-50 rounded-full blur-3xl opacity-50 pointer-events-none -mr-20 -mb-20"></div>
+        <div className="absolute bottom-0 right-0 w-48 h-48 bg-blue-50 rounded-full blur-3xl opacity-50 pointer-events-none -mr-16 -mb-16"></div>
       </motion.div>
     </div>
   );

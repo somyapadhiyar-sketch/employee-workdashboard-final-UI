@@ -195,7 +195,7 @@ export default function ManagerDashboard() {
   const deptEmployees = useMemo(() =>
     allUsers.filter(
       (emp) =>
-        emp.department === dept &&
+        (emp.department === dept || emp.departmentId === dept) &&
         emp.status === "approved" &&
         emp.id !== currentUserId &&
         emp.role !== "admin"
@@ -204,7 +204,7 @@ export default function ManagerDashboard() {
   const deptPending = useMemo(() =>
     allUsers.filter(
       (emp) =>
-        emp.department === dept &&
+        (emp.department === dept || emp.departmentId === dept) &&
         emp.status === "pending" &&
         emp.role !== "admin"
     ), [allUsers, dept]);
@@ -214,7 +214,7 @@ export default function ManagerDashboard() {
     , [user?.email, deptEmployees]);
 
   const todayLogs = allWorkLogs.filter(
-    (log) => log.department === dept && log.date === today
+    (log) => (log.department === dept || log.departmentId === dept) && log.date === today
   );
   const presentIds = [
     ...new Set([
@@ -236,7 +236,7 @@ export default function ManagerDashboard() {
 
   const filteredTeamLogs = allWorkLogs
     .filter((log) => {
-      if (log.department !== dept) return false;
+      if (log.department !== dept && log.departmentId !== dept) return false;
 
       // Filter by dynamic date range
       if (reportStartDate && log.date < reportStartDate) return false;
@@ -272,7 +272,7 @@ export default function ManagerDashboard() {
   const employeesOnLeave = allLeaveRequests.filter(
     (req) =>
       req.status === "approved" &&
-      req.department === dept &&
+      (req.department === dept || req.departmentId === dept) &&
       req.startDate <= today &&
       req.endDate >= today
   );
@@ -1942,50 +1942,61 @@ export default function ManagerDashboard() {
                 }`}
             >
               <div className="space-y-3">
-                {getAttendanceFilteredList().map((item) => {
-                  const emp = item.employeeId
-                    ? allUsers.find((e) => e.id === item.employeeId)
-                    : item;
-                  if (!emp) return null;
-                  return (
-                    <div
-                      key={emp.id}
-                      className={`flex items-center justify-between p-3 px-4 rounded-xl border gap-4 ${isDark
-                        ? "bg-gray-700 border-gray-600"
-                        : "bg-gradient-to-r from-gray-50 to-gray-100 border-gray-200"
-                        }`}
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold bg-gradient-to-br from-violet-500 to-purple-500">
-                          {emp.firstName?.[0]}
-                          {emp.lastName?.[0]}
-                        </div>
-                        <div>
-                          <p
-                            className={`font-bold ${isDark ? "text-white" : "text-gray-800"
-                              }`}
-                          >
-                            {emp.firstName} {emp.lastName}
-                          </p>
-                        </div>
-                      </div>
-                      <span
-                        className={`px-3 py-1 rounded-full text-sm font-medium ${attendanceFilter === "onLeave"
-                          ? "bg-amber-100 text-amber-700"
-                          : presentIds.includes(emp.id)
-                            ? "bg-emerald-100 text-emerald-700"
-                            : "bg-rose-100 text-rose-700"
+                {getAttendanceFilteredList().length > 0 ? (
+                  getAttendanceFilteredList().map((item) => {
+                    const emp = item.employeeId
+                      ? allUsers.find((e) => e.id === item.employeeId)
+                      : item;
+                    if (!emp) return null;
+                    return (
+                      <div
+                        key={emp.id}
+                        className={`flex items-center justify-between p-3 px-4 rounded-xl border gap-4 ${isDark
+                          ? "bg-gray-700 border-gray-600"
+                          : "bg-gradient-to-r from-gray-50 to-gray-100 border-gray-200"
                           }`}
                       >
-                        {attendanceFilter === "onLeave"
-                          ? "✓ On Leave"
-                          : presentIds.includes(emp.id)
-                            ? "✓ Present"
-                            : "✗ Absent"}
-                      </span>
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold bg-gradient-to-br from-violet-500 to-purple-500">
+                            {emp.firstName?.[0]}
+                            {emp.lastName?.[0]}
+                          </div>
+                          <div>
+                            <p
+                              className={`font-bold ${isDark ? "text-white" : "text-gray-800"
+                                }`}
+                            >
+                              {emp.firstName} {emp.lastName}
+                            </p>
+                          </div>
+                        </div>
+                        <span
+                          className={`px-3 py-1 rounded-full text-sm font-medium ${attendanceFilter === "onLeave"
+                            ? "bg-amber-100 text-amber-700"
+                            : presentIds.includes(emp.id)
+                              ? "bg-emerald-100 text-emerald-700"
+                              : "bg-rose-100 text-rose-700"
+                            }`}
+                        >
+                          {attendanceFilter === "onLeave"
+                            ? "✓ On Leave"
+                            : presentIds.includes(emp.id)
+                              ? "✓ Present"
+                              : "✗ Absent"}
+                        </span>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="text-center py-10">
+                    <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-3">
+                      <i className="fas fa-users-slash text-2xl text-gray-400"></i>
                     </div>
-                  );
-                })}
+                    <p className={isDark ? "text-gray-400" : "text-gray-500"}>
+                      No employees found for the selected filter.
+                    </p>
+                  </div>
+                )}
               </div>
             </motion.div>
           </motion.div>

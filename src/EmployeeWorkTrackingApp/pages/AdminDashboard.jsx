@@ -213,11 +213,11 @@ export default function AdminDashboard() {
   );
 
   const getDepartmentCount = (deptKey) =>
-    approvedEmployees.filter((emp) => emp.department === deptKey).length;
+    approvedEmployees.filter((emp) => emp.department === deptKey || emp.departmentId === deptKey).length;
   const getDepartmentManager = (deptKey) =>
-    approvedManagers.find((emp) => emp.department === deptKey);
+    approvedManagers.find((emp) => emp.department === deptKey || emp.departmentId === deptKey);
   const getDepartmentEmployees = (deptKey) =>
-    regularEmployees.filter((emp) => emp.department === deptKey);
+    regularEmployees.filter((emp) => emp.department === deptKey || emp.departmentId === deptKey);
   const getEmployeeWorkLogs = (employeeId) =>
     workLogs.filter((log) => log.employeeId === employeeId);
 
