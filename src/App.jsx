@@ -18,7 +18,7 @@ import {
 
 import { useAuth } from "./EmployeeWorkTrackingApp/hooks/AuthContext.jsx";
 
-function ProtectedRoute({ children, auth }) {
+function ProtectedRoute({ children, auth, allowedRoles }) {
   if (auth.loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-cyan-50 via-blue-50 to-indigo-50">
@@ -32,6 +32,16 @@ function ProtectedRoute({ children, auth }) {
 
   if (!auth?.currentUser) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (allowedRoles && !allowedRoles.includes(auth.currentUser.role)) {
+    const dashboardPath =
+      auth.currentUser.role === "admin"
+        ? "/admin"
+        : auth.currentUser.role === "employee"
+        ? "/employee"
+        : "/manager";
+    return <Navigate to={dashboardPath} replace />;
   }
 
   return children;
@@ -116,7 +126,7 @@ function EmployeeWorkTrackingApp() {
           path="/admin/*"
           element={
             <ThemeProvider>
-              <ProtectedRoute auth={auth}>
+              <ProtectedRoute auth={auth} allowedRoles={["admin"]}>
                 <DashboardLayout onLogout={handleLogout}>
                   <Outlet />
                 </DashboardLayout>
@@ -144,7 +154,7 @@ function EmployeeWorkTrackingApp() {
           path="/employee/*"
           element={
             <ThemeProvider>
-              <ProtectedRoute auth={auth}>
+              <ProtectedRoute auth={auth} allowedRoles={["employee"]}>
                 <DashboardLayout onLogout={handleLogout}>
                   <Outlet />
                 </DashboardLayout>
@@ -161,7 +171,7 @@ function EmployeeWorkTrackingApp() {
           path="/manager/*"
           element={
             <ThemeProvider>
-              <ProtectedRoute auth={auth}>
+              <ProtectedRoute auth={auth} allowedRoles={["dept_manager", "manager"]}>
                 <DashboardLayout onLogout={handleLogout}>
                   <Outlet />
                 </DashboardLayout>

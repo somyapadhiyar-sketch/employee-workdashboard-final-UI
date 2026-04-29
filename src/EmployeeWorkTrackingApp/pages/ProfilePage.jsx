@@ -229,7 +229,7 @@ export default function ProfilePage() {
     setSaving(true);
     try {
       // Verify current password against stored value
-      const storedUser = JSON.parse(localStorage.getItem("currentUser"));
+      const storedUser = JSON.parse(sessionStorage.getItem("currentUser"));
       if (storedUser?.password && storedUser.password !== passwordData.currentPassword) {
         setMessage({ text: "Current password is incorrect.", type: "error" });
         setSaving(false);
@@ -238,7 +238,7 @@ export default function ProfilePage() {
 
       // Update password in localStorage
       const updatedUser = { ...(storedUser || {}), password: passwordData.newPassword };
-      localStorage.setItem("currentUser", JSON.stringify(updatedUser));
+      sessionStorage.setItem("currentUser", JSON.stringify(updatedUser));
 
       // Also update in employees list
       const employees = JSON.parse(localStorage.getItem("employees")) || [];

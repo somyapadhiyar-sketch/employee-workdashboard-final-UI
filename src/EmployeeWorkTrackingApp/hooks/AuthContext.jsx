@@ -11,38 +11,43 @@ export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Restore session from localStorage on mount
+  // Restore session from sessionStorage on mount
   useEffect(() => {
-    // Only restore session if data version matches (prevents stale logins)
     const DATA_VERSION = 'v2_clean';
-    if (localStorage.getItem('dataVersion') === DATA_VERSION) {
-      const storedUser = JSON.parse(localStorage.getItem("currentUser"));
-      if (storedUser) {
-        setCurrentUser(storedUser);
-      }
+    
+    // Check if we need to clear session (if version changed)
+    if (localStorage.getItem('dataVersion') !== DATA_VERSION) {
+      sessionStorage.removeItem("currentUser");
     }
+
+    const storedUser = JSON.parse(sessionStorage.getItem("currentUser"));
+    if (storedUser) {
+      setCurrentUser(storedUser);
+    }
+    
     setLoading(false);
   }, []);
 
   // Set current user (called after login)
   const login = (userData) => {
     setCurrentUser(userData);
+    sessionStorage.setItem("currentUser", JSON.stringify(userData));
   };
 
   // Logout
   const logout = () => {
-    localStorage.removeItem("currentUser");
+    sessionStorage.removeItem("currentUser");
     setCurrentUser(null);
   };
 
-  // Update user locally + in localStorage
+  // Update user locally + in sessionStorage
   const updateUser = (updatedData) => {
     if (!currentUser) return;
     const newUser = { ...currentUser, ...updatedData };
     setCurrentUser(newUser);
-    localStorage.setItem("currentUser", JSON.stringify(newUser));
+    sessionStorage.setItem("currentUser", JSON.stringify(newUser));
 
-    // Also update in employees list
+    // Also update in employees list (which stays in localStorage as it's shared data)
     const employees = JSON.parse(localStorage.getItem("employees")) || [];
     const userId = newUser.uid || newUser.id;
     const updatedEmployees = employees.map((emp) =>

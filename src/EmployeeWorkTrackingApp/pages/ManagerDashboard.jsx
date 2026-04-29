@@ -558,7 +558,7 @@ export default function ManagerDashboard() {
     calculateDuration(taskStartTime, formatTimeForInput(new Date()));
   };
   const getAttendanceFilteredList = () => {
-    if (!attendanceFilter) return [];
+    if (!attendanceFilter) return deptEmployees;
     if (attendanceFilter === "present")
       return deptEmployees.filter((emp) => presentIds.includes(emp.id));
     if (attendanceFilter === "absent")

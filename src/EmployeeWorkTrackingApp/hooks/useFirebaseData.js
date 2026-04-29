@@ -225,11 +225,11 @@ export default function useFirebaseData(currentUser) {
       );
       localStorage.setItem('employees', JSON.stringify(updatedEmps));
 
-      // Also update currentUser in localStorage
-      const cu = JSON.parse(localStorage.getItem('currentUser'));
+      // Also update currentUser in sessionStorage
+      const cu = JSON.parse(sessionStorage.getItem('currentUser'));
       if (cu && (cu.uid || cu.id) === userId) {
         const updatedCu = { ...cu, clockedIn: true, lastClockInDate: today, activeLogId: logId };
-        localStorage.setItem('currentUser', JSON.stringify(updatedCu));
+        sessionStorage.setItem('currentUser', JSON.stringify(updatedCu));
       }
 
       return { success: true, logId };
@@ -262,10 +262,10 @@ export default function useFirebaseData(currentUser) {
       );
       localStorage.setItem('employees', JSON.stringify(updatedEmps));
 
-      const cu = JSON.parse(localStorage.getItem('currentUser'));
+      const cu = JSON.parse(sessionStorage.getItem('currentUser'));
       if (cu && (cu.uid || cu.id) === userId) {
         const updatedCu = { ...cu, clockedIn: false, lastClockOutDate: today, activeLogId: null };
-        localStorage.setItem('currentUser', JSON.stringify(updatedCu));
+        sessionStorage.setItem('currentUser', JSON.stringify(updatedCu));
       }
 
       return { success: true };
@@ -344,9 +344,9 @@ export default function useFirebaseData(currentUser) {
       setAllUsers(updated);
       persistEmployees(updated);
 
-      const cu = JSON.parse(localStorage.getItem('currentUser'));
+      const cu = JSON.parse(sessionStorage.getItem('currentUser'));
       if (cu && (cu.uid || cu.id) === userId) {
-        localStorage.setItem('currentUser', JSON.stringify({ ...cu, ...updatedUser }));
+        sessionStorage.setItem('currentUser', JSON.stringify({ ...cu, ...updatedUser }));
       }
       return { success: true };
     } catch (err) {

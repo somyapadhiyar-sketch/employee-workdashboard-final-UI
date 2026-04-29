@@ -46,7 +46,7 @@ export default function Login({ onLoginSuccess, onSwitchToRegister }) {
           status: "approved",
           clockedIn: false,
         };
-        localStorage.setItem("currentUser", JSON.stringify(userData));
+        sessionStorage.setItem("currentUser", JSON.stringify(userData));
         setLoading(false);
         onLoginSuccess(userData);
         return;
@@ -85,7 +85,7 @@ export default function Login({ onLoginSuccess, onSwitchToRegister }) {
         return;
       }
 
-      localStorage.setItem("currentUser", JSON.stringify(user));
+      sessionStorage.setItem("currentUser", JSON.stringify(user));
       setLoading(false);
       onLoginSuccess(user);
       return;
@@ -101,7 +101,7 @@ export default function Login({ onLoginSuccess, onSwitchToRegister }) {
     );
 
     if (user) {
-      localStorage.setItem("currentUser", JSON.stringify(user));
+      sessionStorage.setItem("currentUser", JSON.stringify(user));
       setLoading(false);
       onLoginSuccess(user);
       return;
@@ -174,10 +174,10 @@ export default function Login({ onLoginSuccess, onSwitchToRegister }) {
         initial={{ opacity: 0, x: 50 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.6, ease: "easeOut", delay: 0.1 }}
-        className="w-full md:w-7/12 lg:w-1/2 flex flex-col justify-center items-center p-8 bg-white min-h-[65vh] md:h-screen md:overflow-y-auto custom-scrollbar order-2 relative"
+        className="w-full md:w-7/12 lg:w-1/2 flex flex-col justify-center items-center p-8 bg-white min-h-[65vh] md:h-screen md:overflow-hidden order-2 relative"
       >
         <div className="w-full max-w-md relative z-10">
-          <div className="mb-10 text-center md:text-left">
+          <div className="mb-6 md:mb-8 text-center md:text-left">
             <h2 className="text-4xl font-extrabold text-gray-900 mb-3 tracking-tight">Welcome Back</h2>
             <p className="text-gray-500 font-medium">Please sign in to your account</p>
           </div>
@@ -193,8 +193,8 @@ export default function Login({ onLoginSuccess, onSwitchToRegister }) {
             </motion.div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
+            <div className="space-y-4 md:space-y-5">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2 ml-1">
                   Email Address
@@ -294,7 +294,7 @@ export default function Login({ onLoginSuccess, onSwitchToRegister }) {
             </motion.button>
           </form>
 
-          <div className="mt-10 text-center">
+          <div className="mt-6 md:mt-8 text-center">
             <p className="text-gray-500 font-medium">
               New to WorkTracker?{" "}
               <button
