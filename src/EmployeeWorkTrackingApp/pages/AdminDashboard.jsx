@@ -11,7 +11,7 @@ import ManagerActivityReport from "../components/ManagerActivityReport";
 import OrgOverview from "../components/OrgOverview";
 import MyPerformance from "./MyPerformance";
 import DepartmentPerformance from "../components/DepartmentPerformance";
-import useFirebaseData from "../hooks/useFirebaseData";
+import useLocalData from "../hooks/useLocalData";
 
 import { useOutletContext } from "react-router-dom";
 
@@ -76,11 +76,11 @@ export default function AdminDashboard() {
   const [employeeSearchTerm, setEmployeeSearchTerm] = useState("");
 
   // ── Firebase real-time data ──────────────────────────────────────────────
-  const firebaseData = useFirebaseData(auth?.currentUser);
-  const allUsers = firebaseData.allUsers;
-  const workLogs = firebaseData.workLogs;
-  const leaveRequests = firebaseData.leaveRequests;
-  const loadingData = firebaseData.isLoading;
+  const localData = useLocalData(auth?.currentUser);
+  const allUsers = localData.allUsers;
+  const workLogs = localData.workLogs;
+  const leaveRequests = localData.leaveRequests;
+  const loadingData = localData.isLoading;
   const analyticsData = []; // Fallback empty array since it's locally managed
 
   const [attendanceFilter, setAttendanceFilter] = useState(null);
@@ -231,7 +231,7 @@ export default function AdminDashboard() {
   };
 
   const handleApproveUser = async (employeeId) => {
-    const result = await firebaseData.approveEmployee(employeeId);
+    const result = await localData.approveEmployee(employeeId);
     if (result.success) {
       showToast("Account approved successfully!", "success");
     } else {
@@ -245,7 +245,7 @@ export default function AdminDashboard() {
         "Are you sure you want to reject and delete this registration?"
       )
     ) {
-      const result = await firebaseData.rejectEmployee(employeeId);
+      const result = await localData.rejectEmployee(employeeId);
       if (result.success) {
         showToast("Registration rejected.", "success");
       } else {
@@ -260,7 +260,7 @@ export default function AdminDashboard() {
         `Are you sure you want to delete ${employeeName}? This action cannot be undone.`
       )
     ) {
-      const result = await firebaseData.deleteEmployee(employeeId, auth?.currentUser);
+      const result = await localData.deleteEmployee(employeeId, auth?.currentUser);
       if (result.success) {
         showToast(`${employeeName} deleted.`, "success");
       } else {
@@ -349,7 +349,7 @@ export default function AdminDashboard() {
   };
 
   const handleApproveLeave = async (requestId) => {
-    const result = await firebaseData.approveLeaveRequest(requestId);
+    const result = await localData.approveLeaveRequest(requestId);
     if (result.success) {
       showToast("Leave request approved!", "success");
     } else {
@@ -358,7 +358,7 @@ export default function AdminDashboard() {
   };
 
   const handleRejectLeave = async (requestId) => {
-    const result = await firebaseData.rejectLeaveRequest(requestId);
+    const result = await localData.rejectLeaveRequest(requestId);
     if (result.success) {
       showToast("Leave request rejected!", "success");
     } else {

@@ -5,7 +5,7 @@ import departmentManagers from '../Data.json';
  * Central data hook — uses localStorage instead of Firestore.
  * Drop-in replacement for the Firebase version, same API surface.
  */
-export default function useFirebaseData(currentUser) {
+export default function useLocalData(currentUser) {
   // ── State ─────────────────────────────────────────────────────────────────
   const [allUsers, setAllUsers] = useState([]);
   const [workLogs, setWorkLogs] = useState([]);

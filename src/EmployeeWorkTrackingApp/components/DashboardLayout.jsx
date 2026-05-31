@@ -1,7 +1,7 @@
 import { Outlet } from "react-router-dom";
 import AdminSidebar from "./AdminSidebar";
 import { useState } from "react";
-// 1. IMPORT THE NEW FIREBASE AUTH HOOK
+// 1. IMPORT THE AUTH HOOK
 import { useAuth } from "../hooks/AuthContext.jsx";
 
 export default function DashboardLayout({ onLogout }) {

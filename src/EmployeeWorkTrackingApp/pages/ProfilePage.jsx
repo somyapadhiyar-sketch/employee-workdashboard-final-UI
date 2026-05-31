@@ -131,12 +131,12 @@ export default function ProfilePage() {
   //           { merge: true }
   //         );
   //       } catch (fbError) {
-  //         console.warn("Firebase remove image failed:", fbError);
+  //         console.warn("Remove image failed:", fbError);
   //       }
   //     }
   //     auth.updateUser({ ...user, profileImage: "" });
   //   } catch (error) {
-  //     console.error("Error removing image from Firebase:", error);
+  //     console.error("Error removing image:", error);
   //   }
   // };
   const handleRemoveImage = async () => {

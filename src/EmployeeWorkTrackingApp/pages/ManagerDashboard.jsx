@@ -13,7 +13,7 @@ import { useOutletContext } from "react-router-dom";
 import ManagerActivityReport from "../components/ManagerActivityReport";
 import TeamDynamics from "../components/TeamDynamics";
 import MyPerformance from "./MyPerformance";
-import useFirebaseData from "../hooks/useFirebaseData";
+import useLocalData from "../hooks/useLocalData";
 
 export default function ManagerDashboard() {
   const { auth, onLogout } = useOutletContext();
@@ -67,11 +67,11 @@ export default function ManagerDashboard() {
   const [editingLogName, setEditingLogName] = useState(null);
 
   // ── Firebase real-time data ──────────────────────────────────────────
-  const firebaseData = useFirebaseData(user);
-  const allUsers = firebaseData.allUsers;
-  const allWorkLogs = firebaseData.workLogs;
-  const allLeaveRequests = firebaseData.leaveRequests;
-  const loadingData = firebaseData.isLoading;
+  const localData = useLocalData(user);
+  const allUsers = localData.allUsers;
+  const allWorkLogs = localData.workLogs;
+  const allLeaveRequests = localData.leaveRequests;
+  const loadingData = localData.isLoading;
 
   // Initialize holidays
   useEffect(() => {
@@ -321,7 +321,7 @@ export default function ManagerDashboard() {
       );
 
   const handleApproveUser = async (employeeId) => {
-    const result = await firebaseData.approveEmployee(employeeId);
+    const result = await localData.approveEmployee(employeeId);
     if (result.success) {
       showToastMessage("Employee approved successfully!", "success");
     } else {
@@ -331,7 +331,7 @@ export default function ManagerDashboard() {
 
   const handleRejectUser = async (employeeId) => {
     if (window.confirm("Are you sure you want to reject this registration?")) {
-      const result = await firebaseData.rejectEmployee(employeeId);
+      const result = await localData.rejectEmployee(employeeId);
       if (result.success) {
         showToastMessage("Registration rejected.", "success");
       } else {
@@ -346,7 +346,7 @@ export default function ManagerDashboard() {
         `Are you sure you want to remove ${employeeName}? This action cannot be undone.`
       )
     ) {
-      const result = await firebaseData.deleteEmployee(employeeId, user);
+      const result = await localData.deleteEmployee(employeeId, user);
       if (result.success) {
         showToastMessage(`${employeeName} removed successfully.`, "success");
       } else {
@@ -370,7 +370,7 @@ export default function ManagerDashboard() {
     const lDuration = lType === "sick" ? "full" : leaveDuration;
     const lEndDate = lDuration === "half" ? leaveStartDate : leaveEndDate;
 
-    const result = await firebaseData.submitLeaveRequest({
+    const result = await localData.submitLeaveRequest({
       employeeId: currentUserId,
       employeeName: `${user?.firstName} ${user?.lastName}`,
       department: user?.department,
@@ -393,7 +393,7 @@ export default function ManagerDashboard() {
   };
 
   const handleApproveLeave = async (requestId) => {
-    const result = await firebaseData.approveLeaveRequest(requestId);
+    const result = await localData.approveLeaveRequest(requestId);
     if (result.success) {
       showToastMessage("Leave request approved!", "success");
     } else {
@@ -402,7 +402,7 @@ export default function ManagerDashboard() {
   };
 
   const handleRejectLeave = async (requestId) => {
-    const result = await firebaseData.rejectLeaveRequest(requestId);
+    const result = await localData.rejectLeaveRequest(requestId);
     if (result.success) {
       showToastMessage("Leave request rejected!", "success");
     } else {
@@ -435,7 +435,7 @@ export default function ManagerDashboard() {
 
     let result;
     if (editingLogId) {
-      result = await firebaseData.updateWorkLog(editingLogId, logEntry);
+      result = await localData.updateWorkLog(editingLogId, logEntry);
       if (result.success) {
         showToastMessage("Work entry updated!", "success");
         setEditingLogId(null);
@@ -445,7 +445,7 @@ export default function ManagerDashboard() {
         showToastMessage("Failed to update entry.", "error");
       }
     } else {
-      result = await firebaseData.addWorkLog(logEntry);
+      result = await localData.addWorkLog(logEntry);
       if (result.success) {
         showToastMessage("Work entry saved!", "success");
       } else {
@@ -474,7 +474,7 @@ export default function ManagerDashboard() {
 
   const handleDeleteLog = async (logId) => {
     if (window.confirm("Are you sure you want to delete this work entry?")) {
-      const result = await firebaseData.deleteWorkLog(logId);
+      const result = await localData.deleteWorkLog(logId);
       if (result.success) {
         showToastMessage("Work entry deleted!", "success");
       } else {
@@ -487,7 +487,7 @@ export default function ManagerDashboard() {
     if (!currentUserId) return;
     setClockedIn(true);
     setClockInTime(new Date());
-    const result = await firebaseData.clockIn(currentUserId);
+    const result = await localData.clockIn(currentUserId);
     if (result.success) {
       showToastMessage("Clocked in successfully!", "success");
     } else {
@@ -505,7 +505,7 @@ export default function ManagerDashboard() {
     setTaskEndTime("");
     setCalculatedDuration("");
     setIsOnBreak(false);
-    const result = await firebaseData.clockOut(currentUserId, activeLogId);
+    const result = await localData.clockOut(currentUserId, activeLogId);
     if (result.success) {
       showToastMessage("Clocked out successfully!", "success");
     } else {

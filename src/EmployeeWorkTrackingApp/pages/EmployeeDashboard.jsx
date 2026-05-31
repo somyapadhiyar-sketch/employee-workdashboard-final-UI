@@ -11,7 +11,7 @@ import { useTheme } from "../context/ThemeContext";
 import ProfilePage from "./ProfilePage";
 import ActivityReport from "../components/ActivityReport";
 import MyPerformance from "./MyPerformance";
-import useFirebaseData from "../hooks/useFirebaseData";
+import useLocalData from "../hooks/useLocalData";
 
 export default function EmployeeDashboard() {
   const { auth, onLogout } = useOutletContext();
@@ -75,10 +75,10 @@ export default function EmployeeDashboard() {
   const [editingLogId, setEditingLogId] = useState(null);
   const [description, setDescription] = useState("");
 
-  const firebaseData = useFirebaseData(user);
-  const allWorkLogs = firebaseData.workLogs;
-  const allLeaveRequests = firebaseData.leaveRequests;
-  const loadingData = firebaseData.isLoading;
+  const localData = useLocalData(user);
+  const allWorkLogs = localData.workLogs;
+  const allLeaveRequests = localData.leaveRequests;
+  const loadingData = localData.isLoading;
 
   // Initialize holidays
   useEffect(() => {
@@ -230,7 +230,7 @@ export default function EmployeeDashboard() {
     // Optimistic UI update
     setClockedIn(true);
     setClockInTime(formatTime(currentTime));
-    const result = await firebaseData.clockIn(currentUserId);
+    const result = await localData.clockIn(currentUserId);
     if (result.success) {
       showToastMessage("Clocked in successfully!", "success");
     } else {
@@ -244,7 +244,7 @@ export default function EmployeeDashboard() {
     const activeLogId = user?.activeLogId;
     setClockedIn(false);
     setIsOnBreak(false);
-    const result = await firebaseData.clockOut(currentUserId, activeLogId);
+    const result = await localData.clockOut(currentUserId, activeLogId);
     if (result.success) {
       showToastMessage("Clocked out successfully!", "success");
     } else {
@@ -275,7 +275,7 @@ export default function EmployeeDashboard() {
         "error"
       );
 
-    const result = await firebaseData.submitLeaveRequest({
+    const result = await localData.submitLeaveRequest({
       employeeId: currentUserId,
       employeeName: `${user?.firstName} ${user?.lastName}`,
       department: user?.department,
@@ -322,7 +322,7 @@ export default function EmployeeDashboard() {
 
     let result;
     if (editingLogId) {
-      result = await firebaseData.updateWorkLog(editingLogId, logEntry);
+      result = await localData.updateWorkLog(editingLogId, logEntry);
       if (result.success) {
         showToastMessage("Work entry updated!", "success");
         setEditingLogId(null);
@@ -330,7 +330,7 @@ export default function EmployeeDashboard() {
         showToastMessage("Failed to update entry.", "error");
       }
     } else {
-      result = await firebaseData.addWorkLog(logEntry);
+      result = await localData.addWorkLog(logEntry);
       if (result.success) {
         showToastMessage("Work entry saved!", "success");
       } else {
@@ -357,7 +357,7 @@ export default function EmployeeDashboard() {
 
   const handleDeleteLog = async (logId) => {
     if (window.confirm("Are you sure you want to delete this work entry?")) {
-      const result = await firebaseData.deleteWorkLog(logId);
+      const result = await localData.deleteWorkLog(logId);
       if (result.success) {
         showToastMessage("Work entry deleted!", "success");
       } else {
