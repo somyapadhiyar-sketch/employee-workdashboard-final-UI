@@ -8,7 +8,7 @@ import ManagerDashboard from "./EmployeeWorkTrackingApp/pages/ManagerDashboard";
 import ProfilePage from "./EmployeeWorkTrackingApp/pages/ProfilePage";
 import DashboardLayout from "./EmployeeWorkTrackingApp/components/DashboardLayout";
 import {
-  BrowserRouter,
+  MemoryRouter,
   Navigate,
   Outlet,
   Route,
@@ -202,8 +202,8 @@ function EmployeeWorkTrackingApp() {
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <MemoryRouter>
       <EmployeeWorkTrackingApp />
-    </BrowserRouter>
+    </MemoryRouter>
   );
 }
